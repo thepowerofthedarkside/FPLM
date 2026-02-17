@@ -1,0 +1,48 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<h1>Доска: {{ board.name }}</h1>
+<div class="card">
+  <p><b>Код:</b> {{ board.code }}</p>
+  <p>{{ board.description or '' }}</p>
+  {% if can_manage %}
+  <div class="modal-actions">
+    <button type="button" onclick="document.getElementById('editBoardModal').showModal()">Редактировать</button>
+  </div>
+  <dialog id="editBoardModal" class="modal">
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3>Редактировать доску</h3>
+        <form method="dialog"><button type="submit" class="secondary">Закрыть</button></form>
+      </div>
+      <form method="post" action="/boards/{{ board.id }}/update" class="grid">
+        <div><label>Код</label><input name="code" value="{{ board.code }}" required></div>
+        <div><label>Название</label><input name="name" value="{{ board.name }}" required></div>
+        <div><label>Описание</label><input name="description" value="{{ board.description or '' }}"></div>
+        <div><label><input type="checkbox" name="active" {% if board.is_active %}checked{% endif %}> Активна</label></div>
+        <div><button type="submit">Сохранить</button></div>
+      </form>
+    </div>
+  </dialog>
+  {% endif %}
+  <p><a href="/boards/{{ board.id }}/kanban">Открыть канбан-представление</a></p>
+</div>
+
+<div class="card table-wrap">
+  <h3>Задачи доски</h3>
+  <table>
+    <thead><tr><th>ID</th><th>Название</th><th>Статус</th><th>Приоритет</th><th>Очередь</th><th>Исполнитель</th></tr></thead>
+    <tbody>
+      {% for t in tasks %}
+      <tr>
+        <td>{{ t.id }}</td>
+        <td><a href="/tasks/{{ t.id }}">{{ t.title }}</a></td>
+        <td>{{ task_status_labels.get(t.status, t.status) }}</td>
+        <td>{{ task_priority_labels.get(t.priority, t.priority) }}</td>
+        <td>{{ t.queue.name if t.queue else '' }}</td>
+        <td>{{ t.assignee.login if t.assignee else '' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

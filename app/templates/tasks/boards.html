@@ -1,0 +1,41 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<h1>Доски задач</h1>
+{% if can_manage %}
+<div class="modal-actions">
+  <button type="button" onclick="document.getElementById('createBoardModal').showModal()">Создать</button>
+</div>
+<dialog id="createBoardModal" class="modal">
+  <div class="modal-body">
+    <div class="modal-header">
+      <h3>Создать доску</h3>
+      <form method="dialog"><button type="submit" class="secondary">Закрыть</button></form>
+    </div>
+    <form method="post" action="/boards" class="grid">
+      <div><label>Код</label><input name="code" required></div>
+      <div><label>Название</label><input name="name" required></div>
+      <div><label>Описание</label><input name="description"></div>
+      <div><label><input type="checkbox" name="active" checked> Активна</label></div>
+      <div><button type="submit">Создать</button></div>
+    </form>
+  </div>
+</dialog>
+{% endif %}
+
+<div class="card table-wrap">
+  <table>
+    <thead><tr><th>Код</th><th>Название</th><th>Описание</th><th>Статус</th><th>Канбан</th></tr></thead>
+    <tbody>
+      {% for b in boards %}
+      <tr>
+        <td>{{ b.code }}</td>
+        <td><a href="/boards/{{ b.id }}">{{ b.name }}</a></td>
+        <td>{{ b.description or '' }}</td>
+        <td>{{ 'Активна' if b.is_active else 'Неактивна' }}</td>
+        <td><a href="/boards/{{ b.id }}/kanban">Канбан</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

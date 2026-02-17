@@ -1,0 +1,42 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<h1>Поставщики</h1>
+{% if can_manage %}
+<div class="modal-actions">
+  <button type="button" onclick="document.getElementById('createSupplierModal').showModal()">Создать</button>
+</div>
+<dialog id="createSupplierModal" class="modal">
+  <div class="modal-body">
+    <div class="modal-header">
+      <h3>Создать поставщика</h3>
+      <form method="dialog"><button type="submit" class="secondary">Закрыть</button></form>
+    </div>
+    <form method="post" action="/suppliers" class="grid">
+      <div><label>Код</label><input name="code" required></div>
+      <div><label>Название</label><input name="name" required></div>
+      <div><label>Страна</label><input name="country" required></div>
+      <div><label>Email</label><input name="contact_email"></div>
+      <div><label><input type="checkbox" name="active" checked> Активен</label></div>
+      <div><button type="submit">Создать</button></div>
+    </form>
+  </div>
+</dialog>
+{% endif %}
+
+<div class="card table-wrap">
+  <table>
+    <thead><tr><th>Код</th><th>Название</th><th>Страна</th><th>Email</th><th>Статус</th></tr></thead>
+    <tbody>
+      {% for s in suppliers %}
+      <tr>
+        <td>{{ s.code }}</td>
+        <td><a href="/suppliers/{{ s.id }}">{{ s.name }}</a></td>
+        <td>{{ s.country }}</td>
+        <td>{{ s.contact_email or '' }}</td>
+        <td>{{ 'Активен' if s.is_active else 'Неактивен' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

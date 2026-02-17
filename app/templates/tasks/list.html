@@ -1,0 +1,100 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<h1>Задачи</h1>
+
+<div class="card">
+  <form method="get" action="/tasks" class="grid">
+    <div><label>Поиск</label><input name="q" value="{{ q }}" placeholder="Название задачи"></div>
+    <div>
+      <label>Доска</label>
+      <select name="board_id_raw">
+        <option value="">Все</option>
+        {% for b in boards %}<option value="{{ b.id }}" {% if selected_board_id==b.id %}selected{% endif %}>{{ b.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Очередь</label>
+      <select name="queue_id_raw">
+        <option value="">Все</option>
+        {% for q in queues %}<option value="{{ q.id }}" {% if selected_queue_id==q.id %}selected{% endif %}>{{ q.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Статус</label>
+      <select name="status">
+        <option value="">Все</option>
+        {% for s in status_order %}<option value="{{ s }}" {% if selected_status==s %}selected{% endif %}>{{ task_status_labels.get(s, s) }}</option>{% endfor %}
+      </select>
+    </div>
+    <div><label>&nbsp;</label><button type="submit" class="secondary">Фильтр</button></div>
+  </form>
+</div>
+
+{% if can_manage %}
+<div class="card">
+  <h3>Создать задачу</h3>
+  <form method="post" action="/tasks" class="grid">
+    <div><label>Название</label><input name="title" required></div>
+    <div><label>Теги (через запятую)</label><input name="tags" placeholder="outerwear, fw26"></div>
+    <div>
+      <label>Статус</label>
+      <select name="status">{% for s in status_order %}<option value="{{ s }}">{{ task_status_labels.get(s, s) }}</option>{% endfor %}</select>
+    </div>
+    <div>
+      <label>Приоритет</label>
+      <select name="priority">{% for p in priorities %}<option value="{{ p }}">{{ task_priority_labels.get(p, p) }}</option>{% endfor %}</select>
+    </div>
+    <div><label>Начало</label><input type="date" name="start_date"></div>
+    <div><label>Конец</label><input type="date" name="end_date"></div>
+    <div><label>Дедлайн</label><input type="date" name="deadline"></div>
+    <div>
+      <label>Автор</label>
+      <input value="{{ user.login }}" disabled>
+    </div>
+    <div>
+      <label>Исполнитель</label>
+      <select name="assignee_id_raw"><option value="">-</option>{% for u in users %}<option value="{{ u.id }}">{{ u.login }}</option>{% endfor %}</select>
+    </div>
+    <div>
+      <label>Очередь</label>
+      <select name="queue_id_raw"><option value="">-</option>{% for q in queues %}<option value="{{ q.id }}">{{ q.name }}</option>{% endfor %}</select>
+    </div>
+    <div>
+      <label>Доска</label>
+      <select name="board_id_raw"><option value="">-</option>{% for b in boards %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}</select>
+    </div>
+    <div>
+      <label>Коллекция</label>
+      <select name="collection_id_raw"><option value="">-</option>{% for c in collections %}<option value="{{ c.id }}">{{ c.code }} - {{ c.name }}</option>{% endfor %}</select>
+    </div>
+    <div>
+      <label>Изделие</label>
+      <select name="product_id_raw"><option value="">-</option>{% for p in products %}<option value="{{ p.id }}">{{ p.sku }} - {{ p.name }}</option>{% endfor %}</select>
+    </div>
+    <div style="grid-column:1/-1;"><label>Комментарий</label><textarea name="comment"></textarea></div>
+    <div><button type="submit">Создать</button></div>
+  </form>
+</div>
+{% endif %}
+
+<div class="card table-wrap">
+  <table>
+    <thead><tr><th>ID</th><th>Название</th><th>Статус</th><th>Приоритет</th><th>Очередь</th><th>Доска</th><th>Сроки</th><th>Автор</th><th>Исполнитель</th></tr></thead>
+    <tbody>
+      {% for t in tasks %}
+      <tr>
+        <td>{{ t.id }}</td>
+        <td><a href="/tasks/{{ t.id }}">{{ t.title }}</a></td>
+        <td>{{ task_status_labels.get(t.status, t.status) }}</td>
+        <td>{{ task_priority_labels.get(t.priority, t.priority) }}</td>
+        <td>{{ t.queue.name if t.queue else '' }}</td>
+        <td>{{ t.board.name if t.board else '' }}</td>
+        <td>{{ t.start_date or '' }} / {{ t.deadline or '' }}</td>
+        <td>{{ t.author.login if t.author else '' }}</td>
+        <td>{{ t.assignee.login if t.assignee else '' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

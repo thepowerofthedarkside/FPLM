@@ -1,0 +1,53 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<h1>Коллекция: {{ collection.name }}</h1>
+<div class="card">
+  <h3>QR-код коллекции</h3>
+  <img src="/qr/collection/{{ collection.id }}.png" alt="QR collection {{ collection.id }}" class="qr-preview">
+  <p class="small"><a href="/collections/{{ collection.id }}">Ссылка на карточку коллекции</a></p>
+</div>
+
+<div class="card">
+  <p><b>Код:</b> {{ collection.code }}</p>
+  <p><b>Сезон:</b> {{ season_labels.get(collection.season, collection.season) }} {{ collection.year }}</p>
+  <p><b>Линия:</b> {{ collection.brand_line or '' }}</p>
+  {% if can_manage %}
+  <div class="modal-actions">
+    <button type="button" onclick="document.getElementById('editCollectionModal').showModal()">Редактировать</button>
+  </div>
+  <dialog id="editCollectionModal" class="modal">
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3>Редактировать коллекцию</h3>
+        <form method="dialog"><button type="submit" class="secondary">Закрыть</button></form>
+      </div>
+      <form method="post" action="/collections/{{ collection.id }}/update" class="grid">
+        <div><label>Код</label><input name="code" value="{{ collection.code }}" required></div>
+        <div><label>Наименование</label><input name="name" value="{{ collection.name }}" required></div>
+        <div><label>Сезон</label><input name="season" value="{{ collection.season }}" required></div>
+        <div><label>Год</label><input type="number" name="year" value="{{ collection.year }}" required></div>
+        <div><label>Линия бренда</label><input name="brand_line" value="{{ collection.brand_line or '' }}"></div>
+        <div><label><input type="checkbox" name="active" {% if collection.is_active %}checked{% endif %}> Активна</label></div>
+        <div><button type="submit">Сохранить</button></div>
+      </form>
+    </div>
+  </dialog>
+  {% endif %}
+</div>
+
+<div class="card table-wrap">
+  <h3>Изделия коллекции</h3>
+  <table>
+    <thead><tr><th>SKU</th><th>Наименование</th><th>Статус</th></tr></thead>
+    <tbody>
+      {% for p in products %}
+      <tr>
+        <td>{{ p.sku }}</td>
+        <td><a href="/products/{{ p.id }}">{{ p.name }}</a></td>
+        <td>{{ status_labels.get(p.status, p.status) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

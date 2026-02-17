@@ -1,0 +1,28 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<h1>Справочники</h1>
+{% if can_manage %}
+<div class="card">
+  <h3>Создать справочник</h3>
+  <form method="post" action="/dictionaries" class="grid">
+    <div><label>Код</label><input name="code" required></div>
+    <div><label>Наименование</label><input name="name" required></div>
+    <div><label>Описание</label><input name="description"></div>
+    <div><button type="submit">Создать</button></div>
+  </form>
+</div>
+{% endif %}
+<div class="card table-wrap">
+  <table>
+    <thead><tr><th>Код</th><th>Наименование</th><th>Описание</th><th>Используется атрибутами</th></tr></thead>
+    <tbody>
+      {% for d in dictionaries %}
+      <tr>
+        <td>{{ d.code }}</td><td><a href="/dictionaries/{{ d.id }}">{{ d.name }}</a></td><td>{{ d.description or "" }}</td>
+        <td>{{ usage.get(d.id, 0) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

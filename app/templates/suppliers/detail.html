@@ -1,0 +1,46 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<h1>Поставщик: {{ supplier.name }}</h1>
+<div class="card">
+  <p><b>Код:</b> {{ supplier.code }}</p>
+  <p><b>Страна:</b> {{ supplier.country }}</p>
+  <p><b>Email:</b> {{ supplier.contact_email or '' }}</p>
+  {% if can_manage %}
+  <div class="modal-actions">
+    <button type="button" onclick="document.getElementById('editSupplierModal').showModal()">Редактировать</button>
+  </div>
+  <dialog id="editSupplierModal" class="modal">
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3>Редактировать поставщика</h3>
+        <form method="dialog"><button type="submit" class="secondary">Закрыть</button></form>
+      </div>
+      <form method="post" action="/suppliers/{{ supplier.id }}/update" class="grid">
+        <div><label>Код</label><input name="code" value="{{ supplier.code }}" required></div>
+        <div><label>Название</label><input name="name" value="{{ supplier.name }}" required></div>
+        <div><label>Страна</label><input name="country" value="{{ supplier.country }}" required></div>
+        <div><label>Email</label><input name="contact_email" value="{{ supplier.contact_email or '' }}"></div>
+        <div><label><input type="checkbox" name="active" {% if supplier.is_active %}checked{% endif %}> Активен</label></div>
+        <div><button type="submit">Сохранить</button></div>
+      </form>
+    </div>
+  </dialog>
+  {% endif %}
+</div>
+
+<div class="card table-wrap">
+  <h3>Изделия поставщика</h3>
+  <table>
+    <thead><tr><th>SKU</th><th>Наименование</th><th>Статус</th></tr></thead>
+    <tbody>
+      {% for p in products %}
+      <tr>
+        <td>{{ p.sku }}</td>
+        <td><a href="/products/{{ p.id }}">{{ p.name }}</a></td>
+        <td>{{ status_labels.get(p.status, p.status) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

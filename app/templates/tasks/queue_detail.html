@@ -1,0 +1,97 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<h1>Очередь: {{ queue.name }}</h1>
+<p class="muted">Код: {{ queue.code }}{% if queue.description %} | {{ queue.description }}{% endif %}</p>
+<div class="modal-actions">
+  <form method="get" action="/queues/{{ queue.id }}" class="inline">
+    <input name="q" value="{{ q or '' }}" placeholder="Быстрый поиск по атрибутам задач">
+    <button type="submit" class="secondary">Поиск</button>
+  </form>
+  <button type="button" class="secondary" onclick="document.getElementById('queueFilterModal').showModal()">Фильтр по атрибутам</button>
+</div>
+<dialog id="queueFilterModal" class="modal">
+  <div class="modal-body">
+    <div class="modal-header">
+      <h3>Фильтр по атрибутам задач</h3>
+      <form method="dialog"><button type="submit" class="secondary">Закрыть</button></form>
+    </div>
+    <form method="get" action="/queues/{{ queue.id }}" class="grid">
+      <div><label>Быстрый поиск</label><input name="q" value="{{ q or '' }}"></div>
+      <div><label>Статус</label><select name="status"><option value="">Все</option>{% for s in status_order %}<option value="{{ s }}" {% if selected_status==s %}selected{% endif %}>{{ task_status_labels.get(s, s) }}</option>{% endfor %}</select></div>
+      <div><label>Приоритет</label><select name="priority"><option value="">Все</option>{% for p in priorities %}<option value="{{ p }}" {% if selected_priority==p %}selected{% endif %}>{{ task_priority_labels.get(p, p) }}</option>{% endfor %}</select></div>
+      <div><label>Исполнитель</label><select name="assignee_id_raw"><option value="">Все</option>{% for u in users %}<option value="{{ u.id }}" {% if selected_assignee_id==u.id %}selected{% endif %}>{{ u.login }}</option>{% endfor %}</select></div>
+      <div><label>Коллекция</label><select name="collection_id_raw"><option value="">Все</option>{% for c in collections %}<option value="{{ c.id }}" {% if selected_collection_id==c.id %}selected{% endif %}>{{ c.code }} - {{ c.name }}</option>{% endfor %}</select></div>
+      <div><label>Изделие</label><select name="product_id_raw"><option value="">Все</option>{% for p in products %}<option value="{{ p.id }}" {% if selected_product_id==p.id %}selected{% endif %}>{{ p.sku }} - {{ p.name }}</option>{% endfor %}</select></div>
+      <div><button type="submit">Применить фильтр</button></div>
+    </form>
+  </div>
+</dialog>
+
+{% if can_manage %}
+<div class="modal-actions">
+  <button type="button" onclick="document.getElementById('createTaskInQueueModal').showModal()">Создать</button>
+  <button type="button" class="secondary" onclick="document.getElementById('editQueueModal').showModal()">Редактировать</button>
+</div>
+<dialog id="createTaskInQueueModal" class="modal">
+  <div class="modal-body">
+    <div class="modal-header">
+      <h3>Создать задачу в очереди</h3>
+      <form method="dialog"><button type="submit" class="secondary">Закрыть</button></form>
+    </div>
+    <form method="post" action="/tasks" class="grid">
+      <div><label>Название</label><input name="title" required></div>
+      <div><label>Теги</label><input name="tags" placeholder="outerwear, fw26"></div>
+      <div><label>Статус</label><select name="status">{% for s in status_order %}<option value="{{ s }}">{{ task_status_labels.get(s, s) }}</option>{% endfor %}</select></div>
+      <div><label>Приоритет</label><select name="priority">{% for p in priorities %}<option value="{{ p }}">{{ task_priority_labels.get(p, p) }}</option>{% endfor %}</select></div>
+      <div><label>Начало</label><input type="date" name="start_date"></div>
+      <div><label>Конец</label><input type="date" name="end_date"></div>
+      <div><label>Дедлайн</label><input type="date" name="deadline"></div>
+      <div><label>Исполнитель</label><select name="assignee_id_raw"><option value="">-</option>{% for u in users %}<option value="{{ u.id }}">{{ u.login }}</option>{% endfor %}</select></div>
+      <div><label>Доска</label><select name="board_id_raw"><option value="">-</option>{% for b in boards %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}</select></div>
+      <div><label>Коллекция</label><select name="collection_id_raw"><option value="">-</option>{% for c in collections %}<option value="{{ c.id }}">{{ c.code }} - {{ c.name }}</option>{% endfor %}</select></div>
+      <div><label>Изделие</label><select name="product_id_raw"><option value="">-</option>{% for p in products %}<option value="{{ p.id }}">{{ p.sku }} - {{ p.name }}</option>{% endfor %}</select></div>
+      <input type="hidden" name="queue_id_raw" value="{{ queue.id }}">
+      <div style="grid-column:1/-1;"><label>Комментарий</label><textarea name="comment"></textarea></div>
+      <div><button type="submit">Создать</button></div>
+    </form>
+  </div>
+</dialog>
+<dialog id="editQueueModal" class="modal">
+  <div class="modal-body">
+    <div class="modal-header">
+      <h3>Редактировать очередь</h3>
+      <form method="dialog"><button type="submit" class="secondary">Закрыть</button></form>
+    </div>
+    <form method="post" action="/queues/{{ queue.id }}/update" class="grid">
+      <div><label>Код</label><input name="code" value="{{ queue.code }}" required></div>
+      <div><label>Название</label><input name="name" value="{{ queue.name }}" required></div>
+      <div><label>Описание</label><input name="description" value="{{ queue.description or '' }}"></div>
+      <div><label><input type="checkbox" name="active" {% if queue.is_active %}checked{% endif %}> Активна</label></div>
+      <div><button type="submit">Сохранить</button></div>
+    </form>
+  </div>
+</dialog>
+{% endif %}
+
+<div class="card table-wrap">
+  <table>
+    <thead><tr><th>ID</th><th>Название</th><th>Статус</th><th>Приоритет</th><th>Доска</th><th>Автор</th><th>Исполнитель</th><th>Дедлайн</th><th>Коллекция</th><th>Изделие</th></tr></thead>
+    <tbody>
+      {% for t in tasks %}
+      <tr>
+        <td>{{ t.id }}</td>
+        <td><a href="/tasks/{{ t.id }}">{{ t.title }}</a></td>
+        <td>{{ task_status_labels.get(t.status, t.status) }}</td>
+        <td>{{ task_priority_labels.get(t.priority, t.priority) }}</td>
+        <td>{% if t.board %}<a href="/boards/{{ t.board.id }}">{{ t.board.name }}</a>{% endif %}</td>
+        <td>{{ t.author.login if t.author else '' }}</td>
+        <td>{{ t.assignee.login if t.assignee else '' }}</td>
+        <td>{{ t.deadline.isoformat() if t.deadline else '' }}</td>
+        <td>{% if t.collection %}<a href="/collections/{{ t.collection.id }}">{{ t.collection.code }} - {{ t.collection.name }}</a>{% endif %}</td>
+        <td>{% if t.product %}<a href="/products/{{ t.product.id }}">{{ t.product.sku }} - {{ t.product.name }}</a>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

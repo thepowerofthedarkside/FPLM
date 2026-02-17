@@ -1,0 +1,39 @@
+﻿<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title or "FPLM" }}</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  {% if user %}
+  <nav>
+    <div class="container">
+      <div>
+        <a href="/products">Изделия</a>
+        <a href="/queues">Очереди задач</a>
+        <a href="/boards">Канбан</a>
+        <a href="/collections">Коллекции</a>
+        <a href="/suppliers">Поставщики</a>
+        <a href="/attributes">Атрибуты</a>
+        <a href="/dictionaries">Справочники</a>
+        {% if user.role == 'admin' %}<a href="/users">Пользователи</a>{% endif %}
+        {% if user.role == 'admin' %}<a href="/settings">Настройки</a>{% endif %}
+      </div>
+      <div>
+        {{ user.login }} ({{ role_labels.get(user.role, user.role) }})
+        <a href="/logout">Выход</a>
+      </div>
+    </div>
+  </nav>
+  {% endif %}
+
+  <main class="container">
+    {% if flash %}
+      <div class="flash {{ flash.level }}">{{ flash.message }}</div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

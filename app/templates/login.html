@@ -1,0 +1,16 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<div class="card" style="max-width:420px;margin:50px auto;">
+  <h1>Вход в систему</h1>
+  <form method="post" action="/login">
+    <label>Логин</label>
+    <input name="login" required>
+    <label>Пароль</label>
+    <input name="password" type="password" required>
+    <div style="margin-top:12px;">
+      <button type="submit">Войти</button>
+    </div>
+  </form>
+  <p class="small muted">Демо: admin/admin, content/content, dict/dict, viewer/viewer</p>
+</div>
+{% endblock %}

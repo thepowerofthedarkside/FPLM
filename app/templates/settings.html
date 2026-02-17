@@ -1,0 +1,14 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<h1>Настройки системы</h1>
+<div class="card">
+  <form method="post" action="/settings" class="grid">
+    <div style="grid-column:1/-1;">
+      <label><span class="label-row">Адрес сервера <span class="tooltip" data-tip="Используется для генерации QR-кодов со ссылками на карточки.">?</span></span></label>
+      <input name="server_base_url" value="{{ values.server_base_url }}" placeholder="http://127.0.0.1:8000" required>
+    </div>
+
+    <div><button type="submit">Сохранить настройки</button></div>
+  </form>
+</div>
+{% endblock %}

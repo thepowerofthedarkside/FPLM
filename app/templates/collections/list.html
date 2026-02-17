@@ -1,0 +1,47 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<h1>Коллекции</h1>
+{% if can_manage %}
+<div class="modal-actions">
+  <button type="button" onclick="document.getElementById('createCollectionModal').showModal()">Создать</button>
+</div>
+<dialog id="createCollectionModal" class="modal">
+  <div class="modal-body">
+    <div class="modal-header">
+      <h3>Создать коллекцию</h3>
+      <form method="dialog"><button type="submit" class="secondary">Закрыть</button></form>
+    </div>
+    <form method="post" action="/collections" class="grid">
+      <div><label>Код</label><input name="code" required></div>
+      <div><label>Наименование</label><input name="name" required></div>
+      <div>
+        <label><span class="label-row">Сезон <span class="tooltip" data-tip="Используйте коды FW (Осень-Зима) или SS (Весна-Лето).">?</span></span></label>
+        <input name="season" placeholder="FW (Осень-Зима) / SS (Весна-Лето)" required>
+      </div>
+      <div><label>Год</label><input type="number" name="year" value="2026" required></div>
+      <div><label>Линия бренда</label><input name="brand_line" placeholder="Premium / Core"></div>
+      <div><label><input type="checkbox" name="active" checked> Активна</label></div>
+      <div><button type="submit">Создать</button></div>
+    </form>
+  </div>
+</dialog>
+{% endif %}
+
+<div class="card table-wrap">
+  <table>
+    <thead><tr><th>Код</th><th>Наименование</th><th>Сезон</th><th>Год</th><th>Линия</th><th>Статус</th></tr></thead>
+    <tbody>
+      {% for c in collections %}
+      <tr>
+        <td>{{ c.code }}</td>
+        <td><a href="/collections/{{ c.id }}">{{ c.name }}</a></td>
+        <td>{{ season_labels.get(c.season, c.season) }}</td>
+        <td>{{ c.year }}</td>
+        <td>{{ c.brand_line or '' }}</td>
+        <td>{{ 'Активна' if c.is_active else 'Неактивна' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

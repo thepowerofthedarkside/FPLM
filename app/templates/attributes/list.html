@@ -1,0 +1,62 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<h1>Атрибуты</h1>
+<div class="card">
+  <form method="get" action="/attributes" class="grid">
+    <div><label>Поиск (код/наименование)</label><input name="q" value="{{ q }}"></div>
+    <div>
+      <label>Тип</label>
+      <select name="data_type">
+        <option value="">Все</option>
+        {% for dt in data_types %}<option value="{{ dt }}" {% if selected_type==dt %}selected{% endif %}>{{ data_type_labels.get(dt, dt) }}</option>{% endfor %}
+      </select>
+    </div>
+    <div><label>&nbsp;</label><button type="submit" class="secondary">Фильтр</button></div>
+  </form>
+</div>
+
+{% if can_manage %}
+<div class="card">
+  <h3>Создать атрибут</h3>
+  <form method="post" action="/attributes" class="grid">
+    <div><label>Код</label><input name="code" required></div>
+    <div><label>Наименование</label><input name="name" required></div>
+    <div>
+      <label><span class="label-row">Тип данных <span class="tooltip" data-tip="Определяет формат значения атрибута: текст, число, дата, логический флаг или выбор из справочника.">?</span></span></label>
+      <select name="data_type" required>
+        {% for dt in data_types %}<option value="{{ dt }}">{{ data_type_labels.get(dt, dt) }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label><span class="label-row">Справочник (для enum) <span class="tooltip" data-tip="Укажите справочник, если тип данных 'Справочник'.">?</span></span></label>
+      <select name="dictionary_id">
+        <option value="">-</option>
+        {% for d in dictionaries %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div><label><input type="checkbox" name="is_required"> Обязательный</label></div>
+    <div><label><input type="checkbox" name="is_multivalue"> Множественный</label></div>
+    <div><button type="submit">Создать</button></div>
+  </form>
+</div>
+{% endif %}
+
+<div class="card table-wrap">
+  <table>
+    <thead><tr><th>Код</th><th>Наименование</th><th>Тип</th><th>Справочник</th><th>Обяз.</th><th>Множ.</th><th>Статус</th></tr></thead>
+    <tbody>
+      {% for a in attributes %}
+      <tr>
+        <td>{{ a.code }}</td>
+        <td><a href="/attributes/{{ a.id }}">{{ a.name }}</a></td>
+        <td>{{ data_type_labels.get(a.data_type, a.data_type) }}</td>
+        <td>{{ a.dictionary.name if a.dictionary else "" }}</td>
+        <td>{{ "Да" if a.is_required else "Нет" }}</td>
+        <td>{{ "Да" if a.is_multivalue else "Нет" }}</td>
+        <td>{{ "Активен" if a.is_active else "Неактивен" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

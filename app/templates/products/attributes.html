@@ -1,0 +1,49 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<h1>Атрибуты изделия: {{ product.name }}</h1>
+{% if can_manage %}
+<div class="card">
+  <h3>Назначить атрибут</h3>
+  <form method="post" action="/products/{{ product.id }}/attributes/add" class="grid">
+    <div>
+      <label>Атрибут</label>
+      <select name="attribute_id" required>
+        {% for a in available_attributes %}<option value="{{ a.id }}">{{ a.code }} - {{ a.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div><label>&nbsp;</label><button type="submit">Добавить</button></div>
+  </form>
+</div>
+{% endif %}
+
+<div class="card table-wrap">
+  <table>
+    <thead><tr><th>Атрибут</th><th>Тип</th><th>Обяз.</th><th>Множ.</th><th>Значение</th><th>Действия</th></tr></thead>
+    <tbody>
+      {% for a in assignments %}
+      <tr>
+        <td>{{ a.attribute.code }} - {{ a.attribute.name }}</td>
+        <td>{{ data_type_labels.get(a.attribute.data_type, a.attribute.data_type) }}</td>
+        <td>{{ "Да" if a.attribute.is_required else "Нет" }}</td>
+        <td>{{ "Да" if a.attribute.is_multivalue else "Нет" }}</td>
+        <td>
+          {% if a.values %}
+            {% for v in a.values %}<div>{{ get_value_view(v, a.attribute.data_type) }}</div>{% endfor %}
+          {% else %}
+            <span class="muted">Не заполнено</span>
+          {% endif %}
+        </td>
+        <td class="actions">
+          <a href="/products/{{ product.id }}/attributes/{{ a.id }}">Редактировать значение</a>
+          {% if can_manage %}
+          <form method="post" action="/products/{{ product.id }}/attributes/{{ a.id }}/remove" class="inline" onsubmit="return confirm('Снять атрибут с изделия?');">
+            <button type="submit" class="danger">Снять</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

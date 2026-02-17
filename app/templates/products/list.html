@@ -1,0 +1,84 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<h1>Изделия</h1>
+
+<div class="card">
+  <form method="get" action="/products" class="grid">
+    <div><label>Поиск изделий</label><input name="q" value="{{ q }}" placeholder="SKU или название"></div>
+    <div>
+      <label>Статус</label>
+      <select name="status_filter">
+        <option value="">Все</option>
+        {% for st in statuses %}<option value="{{ st }}" {% if status_filter==st %}selected{% endif %}>{{ status_labels.get(st, st) }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Категория</label>
+      <select name="category_id_raw">
+        <option value="">Все</option>
+        {% for item in category_items %}<option value="{{ item.id }}" {% if selected_category_id==item.id %}selected{% endif %}>{{ item.label }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label><span class="label-row">Коллекция <span class="tooltip" data-tip="Фильтр показывает только изделия выбранной коллекции.">?</span></span></label>
+      <select name="collection_id_raw">
+        <option value="">Все</option>
+        {% for c in collections %}<option value="{{ c.id }}" {% if selected_collection_id==c.id %}selected{% endif %}>{{ c.code }} - {{ c.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Сортировка</label>
+      <select name="sort">
+        <option value="updated_desc" {% if sort=='updated_desc' %}selected{% endif %}>По обновлению</option>
+        <option value="created_desc" {% if sort=='created_desc' %}selected{% endif %}>По дате создания</option>
+        <option value="name_asc" {% if sort=='name_asc' %}selected{% endif %}>По названию</option>
+      </select>
+    </div>
+    <div><label>&nbsp;</label><button type="submit" class="secondary">Применить</button></div>
+  </form>
+</div>
+
+{% if can_manage %}
+<div class="card">
+  <h3>Создать изделие</h3>
+  <form method="post" action="/products" class="grid">
+    <div><label>SKU*</label><input name="sku" required></div>
+    <div><label>Наименование*</label><input name="name" required></div>
+    <div>
+      <label>Статус</label>
+      <select name="status">
+        {% for st in statuses %}<option value="{{ st }}">{{ status_labels.get(st, st) }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Категория</label>
+      <select name="category_id_raw">
+        <option value="">-</option>
+        {% for item in category_items %}<option value="{{ item.id }}">{{ item.label }}</option>{% endfor %}
+      </select>
+    </div>
+    <div style="grid-column:1/-1;"><label>Описание</label><textarea name="description"></textarea></div>
+    <div><button type="submit">Создать</button></div>
+  </form>
+</div>
+{% endif %}
+
+<div class="product-grid">
+  {% for p in products %}
+  <a href="/products/{{ p.id }}" class="product-card-link">
+    <article class="product-card">
+      <img src="/product-cover/{{ p.id }}.svg" alt="cover {{ p.sku }}" class="product-cover">
+      <div class="product-card-body">
+        <div class="product-line-1">
+          <strong>{{ p.sku }}</strong>
+          <span class="badge {{ p.status }}">{{ status_labels.get(p.status, p.status) }}</span>
+        </div>
+        <div class="product-name">{{ p.name }}</div>
+        <div class="product-meta">{{ p.spec.collection.code if p.spec and p.spec.collection else "" }}</div>
+        <div class="product-meta">{{ sample_stage_labels.get(p.spec.sample_stage, p.spec.sample_stage) if p.spec and p.spec.sample_stage else "" }}</div>
+      </div>
+    </article>
+  </a>
+  {% endfor %}
+</div>
+{% endblock %}

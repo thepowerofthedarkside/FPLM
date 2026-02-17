@@ -1,0 +1,94 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<h1>Задача #{{ task.id }}</h1>
+<div class="card">
+  <p><b>Название:</b> {{ task.title }}</p>
+  <p><b>Статус:</b> {{ task_status_labels.get(task.status, task.status) }}</p>
+  <p><b>Приоритет:</b> {{ task_priority_labels.get(task.priority, task.priority) }}</p>
+  <p><b>Автор:</b> {{ task.author.login if task.author else '' }}</p>
+  <p><b>Исполнитель:</b> {{ task.assignee.login if task.assignee else '' }}</p>
+  <p><b>Комментарий:</b> {{ task.comment or '' }}</p>
+  {% if can_manage %}
+  <div class="modal-actions">
+    <button type="button" onclick="document.getElementById('editTaskModal').showModal()">Редактировать</button>
+  </div>
+  <dialog id="editTaskModal" class="modal">
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3>Редактировать задачу</h3>
+        <form method="dialog"><button type="submit" class="secondary">Закрыть</button></form>
+      </div>
+      <form method="post" action="/tasks/{{ task.id }}/update" class="grid">
+        <div><label>Название</label><input name="title" value="{{ task.title }}" required></div>
+        <div><label>Теги</label><input name="tags" value="{{ task.tags or '' }}"></div>
+        <div>
+          <label>Статус</label>
+          <select name="status">{% for s in status_order %}<option value="{{ s }}" {% if task.status==s %}selected{% endif %}>{{ task_status_labels.get(s, s) }}</option>{% endfor %}</select>
+        </div>
+        <div>
+          <label>Приоритет</label>
+          <select name="priority">{% for p in priorities %}<option value="{{ p }}" {% if task.priority==p %}selected{% endif %}>{{ task_priority_labels.get(p, p) }}</option>{% endfor %}</select>
+        </div>
+        <div><label>Начало</label><input type="date" name="start_date" value="{{ task.start_date.isoformat() if task.start_date else '' }}"></div>
+        <div><label>Конец</label><input type="date" name="end_date" value="{{ task.end_date.isoformat() if task.end_date else '' }}"></div>
+        <div><label>Дедлайн</label><input type="date" name="deadline" value="{{ task.deadline.isoformat() if task.deadline else '' }}"></div>
+        <div><label>Автор</label><input value="{{ task.author.login if task.author else '' }}" disabled></div>
+        <div>
+          <label>Исполнитель</label>
+          <select name="assignee_id_raw"><option value="">-</option>{% for u in users %}<option value="{{ u.id }}" {% if task.assignee_id==u.id %}selected{% endif %}>{{ u.login }}</option>{% endfor %}</select>
+        </div>
+        <div>
+          <label>Очередь</label>
+          <select name="queue_id_raw"><option value="">-</option>{% for q in queues %}<option value="{{ q.id }}" {% if task.queue_id==q.id %}selected{% endif %}>{{ q.name }}</option>{% endfor %}</select>
+        </div>
+        <div>
+          <label>Доска</label>
+          <select name="board_id_raw"><option value="">-</option>{% for b in boards %}<option value="{{ b.id }}" {% if task.board_id==b.id %}selected{% endif %}>{{ b.name }}</option>{% endfor %}</select>
+        </div>
+        <div>
+          <label>Коллекция</label>
+          <select name="collection_id_raw"><option value="">-</option>{% for c in collections %}<option value="{{ c.id }}" {% if task.collection_id==c.id %}selected{% endif %}>{{ c.code }} - {{ c.name }}</option>{% endfor %}</select>
+        </div>
+        <div>
+          <label>Изделие</label>
+          <select name="product_id_raw"><option value="">-</option>{% for p in products %}<option value="{{ p.id }}" {% if task.product_id==p.id %}selected{% endif %}>{{ p.sku }} - {{ p.name }}</option>{% endfor %}</select>
+        </div>
+        <div style="grid-column:1/-1;"><label>Комментарий</label><textarea name="comment">{{ task.comment or '' }}</textarea></div>
+        <div><button type="submit">Сохранить</button></div>
+      </form>
+    </div>
+  </dialog>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h3>Вложения задачи</h3>
+  {% if can_manage %}
+  <form method="post" action="/tasks/{{ task.id }}/files" enctype="multipart/form-data" class="grid">
+    <div><label>Файл</label><input type="file" name="task_file" required></div>
+    <div><label>&nbsp;</label><button type="submit">Загрузить файл</button></div>
+  </form>
+  {% endif %}
+  <div class="table-wrap" style="margin-top:10px;">
+    <table>
+      <thead><tr><th>Файл</th><th>Загрузил</th><th>Дата</th><th></th></tr></thead>
+      <tbody>
+        {% for f in task.files %}
+        <tr>
+          <td><a href="{{ f.file_path }}" target="_blank" rel="noopener">{{ f.original_name }}</a></td>
+          <td>{{ f.uploader.login if f.uploader else '' }}</td>
+          <td>{{ f.uploaded_at.strftime('%Y-%m-%d %H:%M') if f.uploaded_at else '' }}</td>
+          <td>
+            {% if can_manage %}
+            <form method="post" action="/tasks/{{ task.id }}/files/{{ f.id }}/delete" class="inline" onsubmit="return confirm('Удалить файл?');">
+              <button type="submit" class="danger">Удалить</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

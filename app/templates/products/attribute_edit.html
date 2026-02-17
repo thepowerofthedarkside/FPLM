@@ -1,0 +1,41 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<h1>Редактирование значения</h1>
+<div class="card">
+  <p><b>Атрибут:</b> {{ assignment.attribute.code }} - {{ assignment.attribute.name }}</p>
+  <p><b>Тип:</b> {{ data_type_labels.get(assignment.attribute.data_type, assignment.attribute.data_type) }}; <b>Множественный:</b> {{ "Да" if assignment.attribute.is_multivalue else "Нет" }}</p>
+
+  {% if can_manage %}
+  <form method="post" action="/products/{{ assignment.product_id }}/attributes/{{ assignment.id }}/update">
+    {% if assignment.attribute.data_type in ['string', 'number', 'date'] %}
+      <label>Значение{% if assignment.attribute.is_multivalue %} (по одному в строке){% endif %}</label>
+      <textarea name="value_text">{% for v in assignment.values %}{{ get_value_view(v, assignment.attribute.data_type) }}
+{% endfor %}</textarea>
+      <p class="small muted">Для даты используйте формат YYYY-MM-DD.</p>
+    {% elif assignment.attribute.data_type == 'bool' %}
+      <label><input type="checkbox" name="value_bool" {% if assignment.values and assignment.values[0].value_bool %}checked{% endif %}> Истина</label>
+    {% elif assignment.attribute.data_type == 'enum' %}
+      <label>Значение справочника</label>
+      <select name="enum_values" {% if assignment.attribute.is_multivalue %}multiple size="8"{% endif %}>
+        {% for item in enum_items %}
+        <option value="{{ item.id }}" {% if item.id in selected_enum_ids %}selected{% endif %}>{{ item.label }}</option>
+        {% endfor %}
+      </select>
+      {% if not assignment.attribute.is_multivalue %}
+      <p class="small muted">Выберите один вариант.</p>
+      {% endif %}
+    {% endif %}
+    <div class="actions" style="margin-top:10px;">
+      <button type="submit">Сохранить</button>
+      <a href="/products/{{ assignment.product_id }}/attributes">Назад</a>
+    </div>
+  </form>
+  {% else %}
+    {% if assignment.values %}
+      {% for v in assignment.values %}<div>{{ get_value_view(v, assignment.attribute.data_type) }}</div>{% endfor %}
+    {% else %}
+      <p class="muted">Не заполнено</p>
+    {% endif %}
+  {% endif %}
+</div>
+{% endblock %}
