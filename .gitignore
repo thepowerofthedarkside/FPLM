@@ -1,7 +1,7 @@
 ﻿.venv/
 __pycache__/
 *.pyc
-pim.db
+#pim.db
 app/static/uploads/
 app/static/product_files/
 app/static/task_files/

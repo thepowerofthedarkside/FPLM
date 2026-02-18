@@ -1,144 +1,362 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block content %}
 <h1>Карточка изделия</h1>
-<div class="card">
-  <h3>QR-код карточки изделия</h3>
-  <img src="/qr/product/{{ product.id }}.png" alt="QR product {{ product.id }}" class="qr-preview">
-  <p class="small"><a href="/products/{{ product.id }}">Ссылка на карточку</a></p>
-</div>
-<div class="card">
-  <h3>Обложка</h3>
-  <img src="/product-cover/{{ product.id }}.svg" alt="cover {{ product.sku }}" class="detail-cover">
+<section class="product-top-layout product-hero">
+  <div class="card hero-card">
+    <div class="hero-header">
+      <div>
+        <div class="hero-overline">Карточка изделия</div>
+        <h2 class="hero-title">{{ product.name }}</h2>
+        <div class="hero-subline">
+          <span class="hero-sku">SKU {{ product.sku }}</span>
+          <span class="badge {{ product.status }}">{{ status_labels.get(product.status, product.status) }}</span>
+        </div>
+      </div>
+      <div class="hero-meta">
+        <div class="hero-meta-label">Категория</div>
+        <div class="hero-meta-value">{% for item in category_items %}{% if product.category_item_id==item.id %}{{ item.label }}{% endif %}{% endfor %}</div>
+      </div>
+    </div>
+    <div class="hero-description">
+      <div class="hero-meta-label">Описание</div>
+      <p>{{ product.description or 'Пока не добавлено описание.' }}</p>
+    </div>
+    {% if can_manage %}
+    <div class="hero-actions">
+      <button type="button" class="primary" onclick="document.getElementById('editProductModal').showModal()">Редактировать</button>
+      <form method="post" action="/products/{{ product.id }}/archive" class="inline" onsubmit="return confirm('Архивировать изделие?');"><button type="submit" class="warn">Архивировать</button></form>
+    </div>
+    <dialog id="editProductModal" class="modal">
+      <div class="modal-body">
+        <div class="modal-header">
+          <h3>Редактировать изделие</h3>
+          <form method="dialog"><button type="submit" class="secondary">Закрыть</button></form>
+        </div>
+        <form method="post" action="/products/{{ product.id }}/update" class="grid">
+          <div><label>SKU*</label><input name="sku" value="{{ product.sku }}" required></div>
+          <div><label>Наименование*</label><input name="name" value="{{ product.name }}" required></div>
+          <div>
+            <label>Статус</label>
+            <select name="status">
+              {% for st in statuses %}<option value="{{ st }}" {% if product.status==st %}selected{% endif %}>{{ status_labels.get(st, st) }}</option>{% endfor %}
+            </select>
+          </div>
+          <div>
+            <label>Категория</label>
+            <select name="category_id_raw">
+              <option value="">-</option>
+              {% for item in category_items %}<option value="{{ item.id }}" {% if product.category_item_id==item.id %}selected{% endif %}>{{ item.label }}</option>{% endfor %}
+            </select>
+          </div>
+          <div style="grid-column:1/-1;"><label>Описание</label><textarea name="description">{{ product.description or '' }}</textarea></div>
+          <div><button type="submit">Сохранить</button></div>
+        </form>
+      </div>
+    </dialog>
+    {% else %}
+    <div class="hero-actions">
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="card cover-card">
+      <div class="card-header-row">
+        <h3>Обложка</h3>
+        {% if can_manage %}
+        <button type="button" class="ghost" onclick="document.getElementById('editCoverModal').showModal()">Сменить</button>
+        {% endif %}
+      </div>
+      <img src="/product-cover/{{ product.id }}.svg" alt="cover {{ product.sku }}" class="detail-cover cover-hero">
+      {% if can_manage %}
+      <dialog id="editCoverModal" class="modal">
+        <div class="modal-body">
+          <div class="modal-header">
+            <h3>Загрузка обложки</h3>
+            <form method="dialog"><button type="submit" class="secondary">Закрыть</button></form>
+          </div>
+          <form method="post" action="/products/{{ product.id }}/cover" enctype="multipart/form-data" class="grid">
+            <div><label>Изображение (PNG/JPG/WEBP/SVG)</label><input type="file" name="cover_file" accept=".png,.jpg,.jpeg,.webp,.svg,image/*" required></div>
+            <div><label>&nbsp;</label><button type="submit">Загрузить</button></div>
+          </form>
+        </div>
+      </dialog>
+      {% endif %}
+    </div>
+</section>
+
+<div class="card spec-card">
+  <div class="card-header-row">
+    <div>
+      <h3>Fashion-спецификация</h3>
+      <p class="muted">Женская верхняя одежда</p>
+    </div>
+    {% if can_manage %}
+    <button type="button" class="ghost" onclick="document.getElementById('editSpecModal').showModal()">Редактировать</button>
+    {% endif %}
+  </div>
+  <div class="spec-grid">
+    <div class="spec-chip">
+      <div class="spec-label">Коллекция</div>
+      <div class="spec-value">{{ product.spec.collection.code if product.spec and product.spec.collection else '-' }}</div>
+    </div>
+    <div class="spec-chip">
+      <div class="spec-label">Поставщик</div>
+      <div class="spec-value">{{ product.spec.supplier.name if product.spec and product.spec.supplier else '-' }}</div>
+    </div>
+    <div class="spec-chip">
+      <div class="spec-label">Тип изделия</div>
+      <div class="spec-value">{{ product.spec.style_type if product.spec and product.spec.style_type else '-' }}</div>
+    </div>
+    <div class="spec-chip">
+      <div class="spec-label">Этап образца</div>
+      <div class="spec-value">{{ sample_stage_labels.get(product.spec.sample_stage, product.spec.sample_stage) if product.spec and product.spec.sample_stage else '-' }}</div>
+    </div>
+    <div class="spec-chip">
+      <div class="spec-label">Силуэт</div>
+      <div class="spec-value">{{ product.spec.silhouette if product.spec and product.spec.silhouette else '-' }}</div>
+    </div>
+    <div class="spec-chip">
+      <div class="spec-label">Посадка</div>
+      <div class="spec-value">{{ product.spec.fit_type if product.spec and product.spec.fit_type else '-' }}</div>
+    </div>
+    <div class="spec-chip">
+      <div class="spec-label">Длина (см)</div>
+      <div class="spec-value">{{ product.spec.length_cm if product.spec and product.spec.length_cm is not none else '-' }}</div>
+    </div>
+    <div class="spec-chip">
+      <div class="spec-label">Основной материал</div>
+      <div class="spec-value">{{ product.spec.shell_material if product.spec and product.spec.shell_material else '-' }}</div>
+    </div>
+    <div class="spec-chip">
+      <div class="spec-label">Подкладка</div>
+      <div class="spec-value">{{ product.spec.lining_material if product.spec and product.spec.lining_material else '-' }}</div>
+    </div>
+    <div class="spec-chip">
+      <div class="spec-label">Утеплитель</div>
+      <div class="spec-value">{{ product.spec.insulation if product.spec and product.spec.insulation else '-' }}</div>
+    </div>
+    <div class="spec-chip">
+      <div class="spec-label">План. себестоимость</div>
+      <div class="spec-value">{{ product.spec.planned_cost if product.spec and product.spec.planned_cost is not none else '-' }}</div>
+    </div>
+    <div class="spec-chip">
+      <div class="spec-label">Факт. себестоимость</div>
+      <div class="spec-value">{{ product.spec.actual_cost if product.spec and product.spec.actual_cost is not none else '-' }}</div>
+    </div>
+    {% for assignment in attribute_assignments %}
+    <div class="spec-chip">
+      <div class="spec-label">{{ assignment.attribute.name }}</div>
+      <div class="spec-value">
+        {% if assignment.values %}
+          {% for value in assignment.values %}{{ get_value_view(value, assignment.attribute.data_type) }}{% if not loop.last %}, {% endif %}{% endfor %}
+        {% else %}
+          -
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
   {% if can_manage %}
-  <form method="post" action="/products/{{ product.id }}/cover" enctype="multipart/form-data" class="grid" style="margin-top:10px;">
-    <div><label>Загрузить изображение (PNG/JPG/WEBP/SVG)</label><input type="file" name="cover_file" accept=".png,.jpg,.jpeg,.webp,.svg,image/*" required></div>
-    <div><label>&nbsp;</label><button type="submit">Загрузить обложку</button></div>
-  </form>
+  <dialog id="editSpecModal" class="modal">
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3>Редактировать Fashion-спецификацию</h3>
+        <form method="dialog"><button type="submit" class="secondary">Закрыть</button></form>
+      </div>
+      <form method="post" action="/products/{{ product.id }}/spec" class="grid">
+        <div>
+          <label>Коллекция</label>
+          <select name="collection_id_raw">
+            <option value="">-</option>
+            {% for c in collections %}<option value="{{ c.id }}" {% if product.spec and product.spec.collection_id==c.id %}selected{% endif %}>{{ c.code }} - {{ c.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label>Поставщик</label>
+          <select name="supplier_id_raw">
+            <option value="">-</option>
+            {% for s in suppliers %}<option value="{{ s.id }}" {% if product.spec and product.spec.supplier_id==s.id %}selected{% endif %}>{{ s.code }} - {{ s.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label><span class="label-row">Тип изделия <span class="tooltip" data-tip="Вид верхней одежды: пальто, тренч, пуховик, куртка.">?</span></span></label>
+          <input name="style_type" value="{{ product.spec.style_type if product.spec else '' }}" placeholder="пальто / тренч / пуховик">
+        </div>
+        <div>
+          <label><span class="label-row">Силуэт <span class="tooltip" data-tip="Визуальная форма изделия: оверсайз, прямой, приталенный.">?</span></span></label>
+          <input name="silhouette" value="{{ product.spec.silhouette if product.spec else '' }}" placeholder="оверсайз / прямой / приталенный">
+        </div>
+        <div>
+          <label><span class="label-row">Посадка <span class="tooltip" data-tip="Ощущение посадки на фигуре: regular, relaxed, slim.">?</span></span></label>
+          <input name="fit_type" value="{{ product.spec.fit_type if product.spec else '' }}">
+        </div>
+        <div>
+          <label><span class="label-row">Длина (см) <span class="tooltip" data-tip="Длина изделия по спинке в сантиметрах.">?</span></span></label>
+          <input name="length_cm_raw" value="{{ product.spec.length_cm if product.spec and product.spec.length_cm is not none else '' }}">
+        </div>
+        <div>
+          <label><span class="label-row">Основной материал <span class="tooltip" data-tip="Материал верха изделия, например: шерсть, полиамид, мембрана.">?</span></span></label>
+          <input name="shell_material" value="{{ product.spec.shell_material if product.spec else '' }}">
+        </div>
+        <div>
+          <label><span class="label-row">Подкладка <span class="tooltip" data-tip="Материал внутренней подкладки: вискоза, полиэстер и т.д.">?</span></span></label>
+          <input name="lining_material" value="{{ product.spec.lining_material if product.spec else '' }}">
+        </div>
+        <div>
+          <label><span class="label-row">Утеплитель <span class="tooltip" data-tip="Тип утеплителя: пух, синтетический утеплитель и др.">?</span></span></label>
+          <input name="insulation" value="{{ product.spec.insulation if product.spec else '' }}">
+        </div>
+        <div>
+          <label><span class="label-row">Этап образца <span class="tooltip" data-tip="Текущая стадия: прототип, презентационный, предпроизводственный или производство.">?</span></span></label>
+          <select name="sample_stage">
+            <option value="">-</option>
+            {% for st in sample_stages %}<option value="{{ st }}" {% if product.spec and product.spec.sample_stage==st %}selected{% endif %}>{{ sample_stage_labels.get(st, st) }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label><span class="label-row">План. себестоимость <span class="tooltip" data-tip="Плановая себестоимость единицы изделия до запуска в производство.">?</span></span></label>
+          <input name="planned_cost_raw" value="{{ product.spec.planned_cost if product.spec and product.spec.planned_cost is not none else '' }}">
+        </div>
+        <div>
+          <label><span class="label-row">Факт. себестоимость <span class="tooltip" data-tip="Фактическая себестоимость после расчета по материалам и операциям.">?</span></span></label>
+          <input name="actual_cost_raw" value="{{ product.spec.actual_cost if product.spec and product.spec.actual_cost is not none else '' }}">
+        </div>
+        <div><button type="submit">Сохранить</button></div>
+      </form>
+    </div>
+  </dialog>
   {% endif %}
 </div>
 
+<section class="product-top-layout">
 <div class="card">
+  <div class="card-header-row">
+    <div>
+      <h3>Команда изделия</h3>
+      <p class="muted">Назначение ответственных по роли</p>
+    </div>
+    {% if can_manage %}
+    <button type="button" class="ghost" onclick="document.getElementById('editTeamModal').showModal()">Редактировать</button>
+    {% endif %}
+  </div>
+  <div class="spec-grid">
+    <div class="spec-chip">
+      <div class="spec-label">Дизайнер</div>
+      <div class="spec-value">{% if product.designer %}{{ product.designer.full_name or product.designer.login }}{% else %}-{% endif %}</div>
+    </div>
+    <div class="spec-chip">
+      <div class="spec-label">Продукт менеджер</div>
+      <div class="spec-value">{% if product.product_manager %}{{ product.product_manager.full_name or product.product_manager.login }}{% else %}-{% endif %}</div>
+    </div>
+    <div class="spec-chip">
+      <div class="spec-label">Конструктор-модельер</div>
+      <div class="spec-value">{% if product.pattern_maker %}{{ product.pattern_maker.full_name or product.pattern_maker.login }}{% else %}-{% endif %}</div>
+    </div>
+    <div class="spec-chip">
+      <div class="spec-label">Технолог</div>
+      <div class="spec-value">{% if product.technologist %}{{ product.technologist.full_name or product.technologist.login }}{% else %}-{% endif %}</div>
+    </div>
+    <div class="spec-chip">
+      <div class="spec-label">Руководитель отдела</div>
+      <div class="spec-value">{% if product.department_head %}{{ product.department_head.full_name or product.department_head.login }}{% else %}-{% endif %}</div>
+    </div>
+  </div>
   {% if can_manage %}
-  <form method="post" action="/products/{{ product.id }}/update" class="grid">
-    <div><label>SKU*</label><input name="sku" value="{{ product.sku }}" required></div>
-    <div><label>Наименование*</label><input name="name" value="{{ product.name }}" required></div>
-    <div>
-      <label>Статус</label>
-      <select name="status">
-        {% for st in statuses %}<option value="{{ st }}" {% if product.status==st %}selected{% endif %}>{{ status_labels.get(st, st) }}</option>{% endfor %}
-      </select>
+  <dialog id="editTeamModal" class="modal">
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3>Команда изделия</h3>
+        <form method="dialog"><button type="submit" class="secondary">Закрыть</button></form>
+      </div>
+      <form method="post" action="/products/{{ product.id }}/team" class="grid">
+        <div>
+          <label>Дизайнер</label>
+          <select name="designer_id_raw">
+            <option value="">-</option>
+            {% for u in active_users %}
+            <option value="{{ u.id }}" {% if product.designer_id==u.id %}selected{% endif %}>{{ u.full_name or u.login }} ({{ role_labels.get(u.role, u.role) }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label>Продукт менеджер</label>
+          <select name="product_manager_id_raw">
+            <option value="">-</option>
+            {% for u in active_users %}
+            <option value="{{ u.id }}" {% if product.product_manager_id==u.id %}selected{% endif %}>{{ u.full_name or u.login }} ({{ role_labels.get(u.role, u.role) }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label>Конструктор-модельер</label>
+          <select name="pattern_maker_id_raw">
+            <option value="">-</option>
+            {% for u in active_users %}
+            <option value="{{ u.id }}" {% if product.pattern_maker_id==u.id %}selected{% endif %}>{{ u.full_name or u.login }} ({{ role_labels.get(u.role, u.role) }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label>Технолог</label>
+          <select name="technologist_id_raw">
+            <option value="">-</option>
+            {% for u in active_users %}
+            <option value="{{ u.id }}" {% if product.technologist_id==u.id %}selected{% endif %}>{{ u.full_name or u.login }} ({{ role_labels.get(u.role, u.role) }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label>Руководитель отдела</label>
+          <select name="department_head_id_raw">
+            <option value="">-</option>
+            {% for u in active_users %}
+            <option value="{{ u.id }}" {% if product.department_head_id==u.id %}selected{% endif %}>{{ u.full_name or u.login }} ({{ role_labels.get(u.role, u.role) }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div><button type="submit">Сохранить</button></div>
+      </form>
     </div>
-    <div>
-      <label>Категория</label>
-      <select name="category_id_raw">
-        <option value="">-</option>
-        {% for item in category_items %}<option value="{{ item.id }}" {% if product.category_item_id==item.id %}selected{% endif %}>{{ item.label }}</option>{% endfor %}
-      </select>
-    </div>
-    <div style="grid-column:1/-1;"><label>Описание</label><textarea name="description">{{ product.description or '' }}</textarea></div>
-    <div class="actions">
-      <button type="submit">Сохранить</button>
-      <button formaction="/products/{{ product.id }}/archive" formmethod="post" class="warn" onclick="return confirm('Архивировать изделие?');">Архивировать</button>
-      <button formaction="/products/{{ product.id }}/validate" formmethod="post" class="secondary">Проверить полноту</button>
-      <a href="/products/{{ product.id }}/attributes">Перейти к атрибутам</a>
-    </div>
-  </form>
-  {% else %}
-  <p><b>SKU:</b> {{ product.sku }}</p>
-  <p><b>Наименование:</b> {{ product.name }}</p>
-  <p><b>Статус:</b> {{ status_labels.get(product.status, product.status) }}</p>
-  <p><b>Описание:</b> {{ product.description or '' }}</p>
-  <form method="post" action="/products/{{ product.id }}/validate"><button type="submit" class="secondary">Проверить полноту</button></form>
-  <p><a href="/products/{{ product.id }}/attributes">Просмотр атрибутов</a></p>
+  </dialog>
   {% endif %}
 </div>
 
-<div class="card">
-  <h3>Fashion-спецификация (женская верхняя одежда)</h3>
-  {% if can_manage %}
-  <form method="post" action="/products/{{ product.id }}/spec" class="grid">
-    <div>
-      <label>Коллекция</label>
-      <select name="collection_id_raw">
-        <option value="">-</option>
-        {% for c in collections %}<option value="{{ c.id }}" {% if product.spec and product.spec.collection_id==c.id %}selected{% endif %}>{{ c.code }} - {{ c.name }}</option>{% endfor %}
-      </select>
-    </div>
-    <div>
-      <label>Поставщик</label>
-      <select name="supplier_id_raw">
-        <option value="">-</option>
-        {% for s in suppliers %}<option value="{{ s.id }}" {% if product.spec and product.spec.supplier_id==s.id %}selected{% endif %}>{{ s.code }} - {{ s.name }}</option>{% endfor %}
-      </select>
-    </div>
-    <div>
-      <label><span class="label-row">Тип изделия <span class="tooltip" data-tip="Вид верхней одежды: пальто, тренч, пуховик, куртка.">?</span></span></label>
-      <input name="style_type" value="{{ product.spec.style_type if product.spec else '' }}" placeholder="пальто / тренч / пуховик">
-    </div>
-    <div>
-      <label><span class="label-row">Силуэт <span class="tooltip" data-tip="Визуальная форма изделия: оверсайз, прямой, приталенный.">?</span></span></label>
-      <input name="silhouette" value="{{ product.spec.silhouette if product.spec else '' }}" placeholder="оверсайз / прямой / приталенный">
-    </div>
-    <div>
-      <label><span class="label-row">Посадка <span class="tooltip" data-tip="Ощущение посадки на фигуре: regular, relaxed, slim.">?</span></span></label>
-      <input name="fit_type" value="{{ product.spec.fit_type if product.spec else '' }}">
-    </div>
-    <div>
-      <label><span class="label-row">Длина (см) <span class="tooltip" data-tip="Длина изделия по спинке в сантиметрах.">?</span></span></label>
-      <input name="length_cm_raw" value="{{ product.spec.length_cm if product.spec and product.spec.length_cm is not none else '' }}">
-    </div>
-    <div>
-      <label><span class="label-row">Основной материал <span class="tooltip" data-tip="Материал верха изделия, например: шерсть, полиамид, мембрана.">?</span></span></label>
-      <input name="shell_material" value="{{ product.spec.shell_material if product.spec else '' }}">
-    </div>
-    <div>
-      <label><span class="label-row">Подкладка <span class="tooltip" data-tip="Материал внутренней подкладки: вискоза, полиэстер и т.д.">?</span></span></label>
-      <input name="lining_material" value="{{ product.spec.lining_material if product.spec else '' }}">
-    </div>
-    <div>
-      <label><span class="label-row">Утеплитель <span class="tooltip" data-tip="Тип утеплителя: пух, синтетический утеплитель и др.">?</span></span></label>
-      <input name="insulation" value="{{ product.spec.insulation if product.spec else '' }}">
-    </div>
-    <div>
-      <label><span class="label-row">Этап образца <span class="tooltip" data-tip="Текущая стадия: прототип, презентационный, предпроизводственный или производство.">?</span></span></label>
-      <select name="sample_stage">
-        <option value="">-</option>
-        {% for st in sample_stages %}<option value="{{ st }}" {% if product.spec and product.spec.sample_stage==st %}selected{% endif %}>{{ sample_stage_labels.get(st, st) }}</option>{% endfor %}
-      </select>
-    </div>
-    <div>
-      <label><span class="label-row">План. себестоимость <span class="tooltip" data-tip="Плановая себестоимость единицы изделия до запуска в производство.">?</span></span></label>
-      <input name="planned_cost_raw" value="{{ product.spec.planned_cost if product.spec and product.spec.planned_cost is not none else '' }}">
-    </div>
-    <div>
-      <label><span class="label-row">Факт. себестоимость <span class="tooltip" data-tip="Фактическая себестоимость после расчета по материалам и операциям.">?</span></span></label>
-      <input name="actual_cost_raw" value="{{ product.spec.actual_cost if product.spec and product.spec.actual_cost is not none else '' }}">
-    </div>
-    <div><button type="submit">Сохранить Fashion-спеку</button></div>
-  </form>
-  {% else %}
-  <p><b>Коллекция:</b> {{ product.spec.collection.code if product.spec and product.spec.collection else '' }}</p>
-  <p><b>Поставщик:</b> {{ product.spec.supplier.name if product.spec and product.spec.supplier else '' }}</p>
-  <p><b>Тип:</b> {{ product.spec.style_type if product.spec else '' }}</p>
-  <p><b>Этап:</b> {{ sample_stage_labels.get(product.spec.sample_stage, product.spec.sample_stage) if product.spec and product.spec.sample_stage else '' }}</p>
-  {% endif %}
-</div>
 
+<div class="card qr-card">
+      <div class="card-header-row">
+        <h3>QR-код</h3>
+        <a href="/products/{{ product.id }}" class="ghost">Открыть ссылку</a>
+      </div>
+      <img src="/qr/product/{{ product.id }}.png" alt="QR product {{ product.id }}" class="qr-preview qr-hero">
+      <p class="small muted">Сканируйте для быстрого доступа к карточке.</p>
+</div>
+</section>
 <div class="card">
   <h3>Файлы карточки</h3>
   {% if can_manage %}
-  <form method="post" action="/products/{{ product.id }}/files" enctype="multipart/form-data" class="grid">
-    <div>
-      <label><span class="label-row">Категория <span class="tooltip" data-tip="Тип прикрепляемого файла: скетч, ТЗ, лекала, фото образца или материалы.">?</span></span></label>
-      <select name="category" required>
-        <option value="">-</option>
-        {% for cat in file_categories %}<option value="{{ cat }}">{{ file_category_labels.get(cat, cat) }}</option>{% endfor %}
-      </select>
+  <div class="modal-actions">
+    <button type="button" onclick="document.getElementById('addProductFileModal').showModal()">Добавить файл</button>
+  </div>
+  <dialog id="addProductFileModal" class="modal">
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3>Добавить файл</h3>
+        <form method="dialog"><button type="submit" class="secondary">Закрыть</button></form>
+      </div>
+      <form method="post" action="/products/{{ product.id }}/files" enctype="multipart/form-data" class="grid">
+        <div>
+          <label><span class="label-row">Категория <span class="tooltip" data-tip="Тип прикрепляемого файла: скетч, ТЗ, лекала, фото образца или материалы.">?</span></span></label>
+          <select name="category" required>
+            <option value="">-</option>
+            {% for cat in file_categories %}<option value="{{ cat }}">{{ file_category_labels.get(cat, cat) }}</option>{% endfor %}
+          </select>
+        </div>
+        <div><label>Название (опц.)</label><input name="title" placeholder="Например: ТЗ v3"></div>
+        <div><label>Файл</label><input type="file" name="product_file" required></div>
+        <div><label>&nbsp;</label><button type="submit">Прикрепить файл</button></div>
+      </form>
     </div>
-    <div><label>Название (опц.)</label><input name="title" placeholder="Например: ТЗ v3"></div>
-    <div><label>Файл</label><input type="file" name="product_file" required></div>
-    <div><label>&nbsp;</label><button type="submit">Прикрепить файл</button></div>
-  </form>
+  </dialog>
   {% endif %}
 
   <div class="table-wrap" style="margin-top:10px;">
@@ -166,14 +384,5 @@
   </div>
 </div>
 
-<div class="card">
-  <h3>Проверка обязательных атрибутов</h3>
-  {% if completeness_errors %}
-    <ul>
-      {% for err in completeness_errors %}<li>{{ err }}</li>{% endfor %}
-    </ul>
-  {% else %}
-    <p class="muted">Обязательные атрибуты заполнены.</p>
-  {% endif %}
-</div>
 {% endblock %}
+

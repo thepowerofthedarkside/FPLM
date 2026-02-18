@@ -1,10 +1,10 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block content %}
 <h1>Изделия</h1>
 
 <div class="card">
-  <form method="get" action="/products" class="grid">
-    <div><label>Поиск изделий</label><input name="q" value="{{ q }}" placeholder="SKU или название"></div>
+  <form method="get" action="/products" class="grid products-filter-row" id="productsFilterForm">
+    <div><label>Поиск изделий</label><input id="productsLiveSearch" name="q" value="{{ q }}" placeholder="SKU или название" autocomplete="off"></div>
     <div>
       <label>Статус</label>
       <select name="status_filter">
@@ -35,37 +35,48 @@
       </select>
     </div>
     <div><label>&nbsp;</label><button type="submit" class="secondary">Применить</button></div>
+    <div><label>&nbsp;</label><button type="submit" formaction="/products" formmethod="get" class="secondary">Сбросить фильтр</button></div>
   </form>
 </div>
 
 {% if can_manage %}
 <div class="card">
-  <h3>Создать изделие</h3>
-  <form method="post" action="/products" class="grid">
-    <div><label>SKU*</label><input name="sku" required></div>
-    <div><label>Наименование*</label><input name="name" required></div>
-    <div>
-      <label>Статус</label>
-      <select name="status">
-        {% for st in statuses %}<option value="{{ st }}">{{ status_labels.get(st, st) }}</option>{% endfor %}
-      </select>
+  <div class="modal-actions" style="margin-bottom:0;">
+    <button type="button" onclick="document.getElementById('createProductModal').showModal()">Создать изделие</button>
+  </div>
+  <dialog id="createProductModal" class="modal">
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3>Создать изделие</h3>
+        <form method="dialog"><button type="submit" class="secondary">Закрыть</button></form>
+      </div>
+      <form method="post" action="/products" class="grid">
+        <div><label>SKU*</label><input name="sku" required></div>
+        <div><label>Наименование*</label><input name="name" required></div>
+        <div>
+          <label>Статус</label>
+          <select name="status">
+            {% for st in statuses %}<option value="{{ st }}">{{ status_labels.get(st, st) }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label>Категория</label>
+          <select name="category_id_raw">
+            <option value="">-</option>
+            {% for item in category_items %}<option value="{{ item.id }}">{{ item.label }}</option>{% endfor %}
+          </select>
+        </div>
+        <div style="grid-column:1/-1;"><label>Описание</label><textarea name="description"></textarea></div>
+        <div><button type="submit">Создать</button></div>
+      </form>
     </div>
-    <div>
-      <label>Категория</label>
-      <select name="category_id_raw">
-        <option value="">-</option>
-        {% for item in category_items %}<option value="{{ item.id }}">{{ item.label }}</option>{% endfor %}
-      </select>
-    </div>
-    <div style="grid-column:1/-1;"><label>Описание</label><textarea name="description"></textarea></div>
-    <div><button type="submit">Создать</button></div>
-  </form>
+  </dialog>
 </div>
 {% endif %}
 
-<div class="product-grid">
+<div class="product-grid" id="productGrid">
   {% for p in products %}
-  <a href="/products/{{ p.id }}" class="product-card-link">
+  <a href="/products/{{ p.id }}" class="product-card-link" data-search="{{ (p.sku ~ ' ' ~ p.name)|lower }}">
     <article class="product-card">
       <img src="/product-cover/{{ p.id }}.svg" alt="cover {{ p.sku }}" class="product-cover">
       <div class="product-card-body">
@@ -81,4 +92,21 @@
   </a>
   {% endfor %}
 </div>
+<script>
+  (() => {
+    const input = document.getElementById("productsLiveSearch");
+    const cards = Array.from(document.querySelectorAll("#productGrid .product-card-link"));
+    if (!input || cards.length === 0) return;
+    const normalize = (s) => (s || "").toLocaleLowerCase("ru-RU").trim();
+    const applyFilter = () => {
+      const q = normalize(input.value);
+      cards.forEach((card) => {
+        const haystack = normalize(card.dataset.search || "");
+        card.style.display = !q || haystack.includes(q) ? "" : "none";
+      });
+    };
+    input.addEventListener("input", applyFilter);
+    applyFilter();
+  })();
+</script>
 {% endblock %}

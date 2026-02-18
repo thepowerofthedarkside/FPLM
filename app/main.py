@@ -3,6 +3,7 @@
 from datetime import datetime
 from io import BytesIO
 from pathlib import Path
+import re
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, File, Form, Request, UploadFile
@@ -109,6 +110,20 @@ SETTINGS_DEFAULTS = {
 }
 
 
+def _next_auto_code(codes: list[str], prefix: str) -> str:
+    pattern = re.compile(rf"^{re.escape(prefix)}-(\d+)$")
+    max_num = 0
+    for code in codes:
+        match = pattern.match((code or "").strip().upper())
+        if not match:
+            continue
+        try:
+            max_num = max(max_num, int(match.group(1)))
+        except ValueError:
+            continue
+    return f"{prefix}-{max_num + 1:02d}"
+
+
 def _apply_task_filters(
     stmt: Select[tuple[Task]],
     q: str,
@@ -212,6 +227,96 @@ def _ensure_product_columns() -> None:
         columns = {row[1] for row in rows}
         if "cover_image_path" not in columns:
             conn.exec_driver_sql("ALTER TABLE products ADD COLUMN cover_image_path VARCHAR(300)")
+        if "designer_id" not in columns:
+            conn.exec_driver_sql("ALTER TABLE products ADD COLUMN designer_id INTEGER")
+        if "product_manager_id" not in columns:
+            conn.exec_driver_sql("ALTER TABLE products ADD COLUMN product_manager_id INTEGER")
+        if "pattern_maker_id" not in columns:
+            conn.exec_driver_sql("ALTER TABLE products ADD COLUMN pattern_maker_id INTEGER")
+        if "technologist_id" not in columns:
+            conn.exec_driver_sql("ALTER TABLE products ADD COLUMN technologist_id INTEGER")
+        if "department_head_id" not in columns:
+            conn.exec_driver_sql("ALTER TABLE products ADD COLUMN department_head_id INTEGER")
+
+
+def _ensure_user_columns() -> None:
+    with engine.begin() as conn:
+        rows = conn.exec_driver_sql("PRAGMA table_info(users)").fetchall()
+        columns = {row[1] for row in rows}
+        if "full_name" not in columns:
+            conn.exec_driver_sql("ALTER TABLE users ADD COLUMN full_name VARCHAR(200)")
+        if "department" not in columns:
+            conn.exec_driver_sql("ALTER TABLE users ADD COLUMN department VARCHAR(200)")
+        if "position" not in columns:
+            conn.exec_driver_sql("ALTER TABLE users ADD COLUMN position VARCHAR(200)")
+        if "department_item_id" not in columns:
+            conn.exec_driver_sql("ALTER TABLE users ADD COLUMN department_item_id INTEGER")
+        if "position_item_id" not in columns:
+            conn.exec_driver_sql("ALTER TABLE users ADD COLUMN position_item_id INTEGER")
+
+
+def _get_dictionary_items(db: Session, code: str) -> tuple[Dictionary | None, list[DictionaryItem]]:
+    dictionary = db.scalar(select(Dictionary).where(Dictionary.code == code))
+    if not dictionary:
+        return None, []
+    items = list(
+        db.scalars(
+            select(DictionaryItem)
+            .where(DictionaryItem.dictionary_id == dictionary.id, DictionaryItem.is_active.is_(True))
+            .order_by(DictionaryItem.sort_order.asc(), DictionaryItem.label.asc())
+        ).all()
+    )
+    return dictionary, items
+
+
+def _dictionary_item_usage_counts(db: Session, item_id: int) -> tuple[int, int]:
+    used_as_category = int(db.scalar(select(func.count(Product.id)).where(Product.category_item_id == item_id)) or 0)
+    used_in_attribute_values = int(
+        db.scalar(select(func.count(ProductAttributeValue.id)).where(ProductAttributeValue.dictionary_item_id == item_id)) or 0
+    )
+    return used_as_category, used_in_attribute_values
+
+
+def _dictionary_usage_counts(db: Session, dictionary_id: int) -> tuple[int, int, int]:
+    used_by_attributes = int(db.scalar(select(func.count(Attribute.id)).where(Attribute.dictionary_id == dictionary_id)) or 0)
+    used_in_categories = int(
+        db.scalar(
+            select(func.count(Product.id))
+            .join(DictionaryItem, DictionaryItem.id == Product.category_item_id)
+            .where(DictionaryItem.dictionary_id == dictionary_id)
+        )
+        or 0
+    )
+    used_in_attribute_values = int(
+        db.scalar(
+            select(func.count(ProductAttributeValue.id))
+            .join(DictionaryItem, DictionaryItem.id == ProductAttributeValue.dictionary_item_id)
+            .where(DictionaryItem.dictionary_id == dictionary_id)
+        )
+        or 0
+    )
+    return used_by_attributes, used_in_categories, used_in_attribute_values
+
+
+def _is_valid_category_item(db: Session, category_item_id: int) -> bool:
+    item = db.scalar(
+        select(DictionaryItem)
+        .join(Dictionary, Dictionary.id == DictionaryItem.dictionary_id)
+        .where(
+            DictionaryItem.id == category_item_id,
+            DictionaryItem.is_active.is_(True),
+            Dictionary.code == "category",
+        )
+    )
+    return item is not None
+
+
+def _collection_usage_count(db: Session, collection_id: int) -> int:
+    return int(db.scalar(select(func.count(ProductSpec.id)).where(ProductSpec.collection_id == collection_id)) or 0)
+
+
+def _supplier_usage_count(db: Session, supplier_id: int) -> int:
+    return int(db.scalar(select(func.count(ProductSpec.id)).where(ProductSpec.supplier_id == supplier_id)) or 0)
 
 
 def _cover_palette(style_type: str | None) -> tuple[str, str, str]:
@@ -284,6 +389,7 @@ def collection_qr(collection_id: int, db: Session = Depends(get_db)) -> Response
 
 def bootstrap_data() -> None:
     Base.metadata.create_all(bind=engine)
+    _ensure_user_columns()
     _ensure_product_columns()
     _ensure_uploads_dir()
     db = SessionLocal()
@@ -309,6 +415,48 @@ def bootstrap_data() -> None:
                     DictionaryItem(dictionary_id=category_dict.id, code="mechanics", label="Механика", sort_order=3),
                 ]
             )
+
+        department_dict = db.scalar(select(Dictionary).where(Dictionary.code == "department"))
+        if not department_dict:
+            department_dict = Dictionary(code="department", name="Подразделения", description="Подразделения компании")
+            db.add(department_dict)
+            db.flush()
+        existing_dept_codes = {
+            c for c in db.scalars(select(DictionaryItem.code).where(DictionaryItem.dictionary_id == department_dict.id)).all()
+        }
+        for i, (code, label) in enumerate(
+            [
+                ("design", "Дизайн"),
+                ("product", "Продуктовый отдел"),
+                ("construction", "Конструкторский отдел"),
+                ("technology", "Технологический отдел"),
+                ("management", "Руководство"),
+            ],
+            start=1,
+        ):
+            if code not in existing_dept_codes:
+                db.add(DictionaryItem(dictionary_id=department_dict.id, code=code, label=label, sort_order=i, is_active=True))
+
+        position_dict = db.scalar(select(Dictionary).where(Dictionary.code == "position"))
+        if not position_dict:
+            position_dict = Dictionary(code="position", name="Должности", description="Справочник должностей")
+            db.add(position_dict)
+            db.flush()
+        existing_position_codes = {
+            c for c in db.scalars(select(DictionaryItem.code).where(DictionaryItem.dictionary_id == position_dict.id)).all()
+        }
+        for i, (code, label) in enumerate(
+            [
+                ("designer", "Дизайнер"),
+                ("product_manager", "Продукт менеджер"),
+                ("pattern_maker", "Конструктор-модельер"),
+                ("technologist", "Технолог"),
+                ("head", "Руководитель отдела"),
+            ],
+            start=1,
+        ):
+            if code not in existing_position_codes:
+                db.add(DictionaryItem(dictionary_id=position_dict.id, code=code, label=label, sort_order=i, is_active=True))
 
         if not db.scalar(select(Collection).limit(1)):
             db.add(Collection(code="FW26", name="Осень-Зима 2026", season="FW", year=2026, brand_line="Women Outerwear"))
@@ -372,14 +520,95 @@ def logout(request: Request):
     return _redirect("/login")
 
 
+@app.get("/cabinet", response_class=HTMLResponse)
+def cabinet_page(
+    request: Request,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    authored_tasks = list(
+        db.scalars(
+            select(Task)
+            .options(
+                joinedload(Task.author),
+                joinedload(Task.assignee),
+                joinedload(Task.product),
+                joinedload(Task.collection),
+            )
+            .where(Task.author_id == user.id)
+            .order_by(Task.updated_at.desc())
+        ).all()
+    )
+    assigned_tasks = list(
+        db.scalars(
+            select(Task)
+            .options(
+                joinedload(Task.author),
+                joinedload(Task.assignee),
+                joinedload(Task.product),
+                joinedload(Task.collection),
+            )
+            .where(Task.assignee_id == user.id)
+            .order_by(Task.updated_at.desc())
+        ).all()
+    )
+    products = list(
+        db.scalars(
+            select(Product)
+            .options(joinedload(Product.category_item))
+            .where(
+                or_(
+                    Product.created_by == user.id,
+                    Product.designer_id == user.id,
+                    Product.product_manager_id == user.id,
+                    Product.pattern_maker_id == user.id,
+                    Product.technologist_id == user.id,
+                    Product.department_head_id == user.id,
+                )
+            )
+            .order_by(Product.updated_at.desc())
+        ).all()
+    )
+    return _render(
+        request,
+        "cabinet.html",
+        {
+            "title": "Кабинет",
+            "authored_tasks": authored_tasks,
+            "assigned_tasks": assigned_tasks,
+            "products": products,
+            "user": user,
+        },
+    )
+
+
 @app.get("/users", response_class=HTMLResponse)
 def users_page(
     request: Request,
     user: User = Depends(require_roles("admin")),
     db: Session = Depends(get_db),
 ):
-    users = list(db.scalars(select(User).order_by(User.created_at.desc())).all())
-    return _render(request, "users/list.html", {"title": "Пользователи", "users": users, "roles": sorted(ROLES), "user": user})
+    users = list(
+        db.scalars(
+            select(User)
+            .options(joinedload(User.department_item), joinedload(User.position_item))
+            .order_by(User.created_at.desc())
+        ).all()
+    )
+    _, department_items = _get_dictionary_items(db, "department")
+    _, position_items = _get_dictionary_items(db, "position")
+    return _render(
+        request,
+        "users/list.html",
+        {
+            "title": "Пользователи",
+            "users": users,
+            "roles": sorted(ROLES),
+            "department_items": department_items,
+            "position_items": position_items,
+            "user": user,
+        },
+    )
 
 
 @app.get("/settings", response_class=HTMLResponse)
@@ -421,14 +650,27 @@ def user_detail_page(
     user: User = Depends(require_roles("admin")),
     db: Session = Depends(get_db),
 ):
-    target = db.get(User, user_id)
+    target = db.scalar(
+        select(User)
+        .options(joinedload(User.department_item), joinedload(User.position_item))
+        .where(User.id == user_id)
+    )
     if not target:
         _set_flash(request, "Пользователь не найден", "error")
         return _redirect("/users")
+    _, department_items = _get_dictionary_items(db, "department")
+    _, position_items = _get_dictionary_items(db, "position")
     return _render(
         request,
         "users/detail.html",
-        {"title": f"Пользователь: {target.login}", "target": target, "roles": sorted(ROLES), "user": user},
+        {
+            "title": f"Пользователь: {target.login}",
+            "target": target,
+            "roles": sorted(ROLES),
+            "department_items": department_items,
+            "position_items": position_items,
+            "user": user,
+        },
     )
 
 
@@ -437,6 +679,9 @@ def create_user(
     request: Request,
     login: str = Form(...),
     password: str = Form(...),
+    full_name: str = Form(""),
+    department_id_raw: str = Form(""),
+    position_id_raw: str = Form(""),
     role: str = Form(...),
     active: str | None = Form(None),
     _: User = Depends(require_roles("admin")),
@@ -445,7 +690,49 @@ def create_user(
     if role not in ROLES:
         _set_flash(request, "Некорректная роль", "error")
         return _redirect("/users")
-    db.add(User(login=login.strip(), password_hash=hash_password(password), role=role, is_active=active is not None))
+    department_dict, _ = _get_dictionary_items(db, "department")
+    position_dict, _ = _get_dictionary_items(db, "position")
+
+    def parse_item_id(raw: str, dictionary: Dictionary | None) -> int | None:
+        if not raw.strip():
+            return None
+        if not dictionary:
+            raise ValueError("missing-dictionary")
+        item_id = int(raw)
+        item_exists = db.scalar(
+            select(DictionaryItem.id).where(
+                DictionaryItem.id == item_id,
+                DictionaryItem.dictionary_id == dictionary.id,
+                DictionaryItem.is_active.is_(True),
+            )
+        )
+        if not item_exists:
+            raise ValueError("bad-item")
+        return item_id
+
+    try:
+        department_item_id = parse_item_id(department_id_raw, department_dict)
+        position_item_id = parse_item_id(position_id_raw, position_dict)
+    except ValueError:
+        _set_flash(request, "Некорректное подразделение или должность", "error")
+        return _redirect("/users")
+
+    department_label = db.scalar(select(DictionaryItem.label).where(DictionaryItem.id == department_item_id)) if department_item_id else None
+    position_label = db.scalar(select(DictionaryItem.label).where(DictionaryItem.id == position_item_id)) if position_item_id else None
+
+    db.add(
+        User(
+            login=login.strip(),
+            password_hash=hash_password(password),
+            full_name=full_name.strip() or None,
+            department=department_label,
+            position=position_label,
+            department_item_id=department_item_id,
+            position_item_id=position_item_id,
+            role=role,
+            is_active=active is not None,
+        )
+    )
     try:
         db.commit()
         _set_flash(request, "Пользователь создан", "success")
@@ -459,11 +746,25 @@ def create_user(
 def toggle_user(
     user_id: int,
     request: Request,
-    _: User = Depends(require_roles("admin")),
+    user: User = Depends(require_roles("admin")),
     db: Session = Depends(get_db),
 ):
     target = db.get(User, user_id)
     if target:
+        if target.id == user.id:
+            _set_flash(request, "Нельзя блокировать собственную учетную запись", "error")
+            return _redirect("/users")
+        if target.role == "admin" and target.is_active:
+            remaining = db.scalar(
+                select(func.count(User.id)).where(
+                    User.role == "admin",
+                    User.is_active.is_(True),
+                    User.id != target.id,
+                )
+            )
+            if not remaining:
+                _set_flash(request, "Нельзя блокировать последнего активного администратора", "error")
+                return _redirect("/users")
         target.is_active = not target.is_active
         db.commit()
         _set_flash(request, "Статус пользователя обновлен", "success")
@@ -475,15 +776,82 @@ def change_role(
     user_id: int,
     request: Request,
     role: str = Form(...),
-    _: User = Depends(require_roles("admin")),
+    user: User = Depends(require_roles("admin")),
     db: Session = Depends(get_db),
 ):
     target = db.get(User, user_id)
     if target and role in ROLES:
+        if target.id == user.id:
+            _set_flash(request, "Нельзя менять роль собственной учетной записи", "error")
+            return _redirect("/users")
+        if target.role == "admin" and role != "admin":
+            remaining = db.scalar(
+                select(func.count(User.id)).where(
+                    User.role == "admin",
+                    User.is_active.is_(True),
+                    User.id != target.id,
+                )
+            )
+            if not remaining:
+                _set_flash(request, "Нельзя снять роль у последнего активного администратора", "error")
+                return _redirect("/users")
         target.role = role
         db.commit()
         _set_flash(request, "Роль пользователя обновлена", "success")
     return _redirect("/users")
+
+
+@app.post("/users/{user_id}/profile")
+def update_user_profile(
+    user_id: int,
+    request: Request,
+    full_name: str = Form(""),
+    department_id_raw: str = Form(""),
+    position_id_raw: str = Form(""),
+    _: User = Depends(require_roles("admin")),
+    db: Session = Depends(get_db),
+):
+    target = db.get(User, user_id)
+    if not target:
+        _set_flash(request, "Пользователь не найден", "error")
+        return _redirect("/users")
+    department_dict, _ = _get_dictionary_items(db, "department")
+    position_dict, _ = _get_dictionary_items(db, "position")
+
+    def parse_item_id(raw: str, dictionary: Dictionary | None) -> int | None:
+        if not raw.strip():
+            return None
+        if not dictionary:
+            raise ValueError("missing-dictionary")
+        item_id = int(raw)
+        item_exists = db.scalar(
+            select(DictionaryItem.id).where(
+                DictionaryItem.id == item_id,
+                DictionaryItem.dictionary_id == dictionary.id,
+                DictionaryItem.is_active.is_(True),
+            )
+        )
+        if not item_exists:
+            raise ValueError("bad-item")
+        return item_id
+
+    try:
+        department_item_id = parse_item_id(department_id_raw, department_dict)
+        position_item_id = parse_item_id(position_id_raw, position_dict)
+    except ValueError:
+        _set_flash(request, "Некорректное подразделение или должность", "error")
+        return _redirect(f"/users/{user_id}")
+
+    department_label = db.scalar(select(DictionaryItem.label).where(DictionaryItem.id == department_item_id)) if department_item_id else None
+    position_label = db.scalar(select(DictionaryItem.label).where(DictionaryItem.id == position_item_id)) if position_item_id else None
+    target.full_name = full_name.strip() or None
+    target.department = department_label
+    target.position = position_label
+    target.department_item_id = department_item_id
+    target.position_item_id = position_item_id
+    db.commit()
+    _set_flash(request, "Профиль пользователя обновлен", "success")
+    return _redirect(f"/users/{user_id}")
 
 
 @app.get("/queues", response_class=HTMLResponse)
@@ -575,27 +943,33 @@ def queue_detail_page(
 @app.post("/queues")
 def create_queue(
     request: Request,
-    code: str = Form(...),
     name: str = Form(...),
     description: str = Form(""),
     active: str | None = Form(None),
     _: User = Depends(require_roles("admin", "content-manager")),
     db: Session = Depends(get_db),
 ):
-    db.add(
-        TaskQueue(
-            code=code.strip(),
-            name=name.strip(),
-            description=description.strip() or None,
-            is_active=active is not None,
+    created = False
+    for _ in range(5):
+        existing_codes = list(db.scalars(select(TaskQueue.code)).all())
+        next_code = _next_auto_code(existing_codes, "Q")
+        db.add(
+            TaskQueue(
+                code=next_code,
+                name=name.strip(),
+                description=description.strip() or None,
+                is_active=active is not None,
+            )
         )
-    )
-    try:
-        db.commit()
-        _set_flash(request, "Очередь создана", "success")
-    except IntegrityError:
-        db.rollback()
-        _set_flash(request, "Код очереди должен быть уникален", "error")
+        try:
+            db.commit()
+            _set_flash(request, f"Очередь создана ({next_code})", "success")
+            created = True
+            break
+        except IntegrityError:
+            db.rollback()
+    if not created:
+        _set_flash(request, "Не удалось создать очередь: повторите попытку", "error")
     return _redirect("/queues")
 
 
@@ -603,7 +977,6 @@ def create_queue(
 def update_queue(
     queue_id: int,
     request: Request,
-    code: str = Form(...),
     name: str = Form(...),
     description: str = Form(""),
     active: str | None = Form(None),
@@ -612,7 +985,6 @@ def update_queue(
 ):
     queue = db.get(TaskQueue, queue_id)
     if queue:
-        queue.code = code.strip()
         queue.name = name.strip()
         queue.description = description.strip() or None
         queue.is_active = active is not None
@@ -679,27 +1051,33 @@ def board_detail_page(
 @app.post("/boards")
 def create_board(
     request: Request,
-    code: str = Form(...),
     name: str = Form(...),
     description: str = Form(""),
     active: str | None = Form(None),
     _: User = Depends(require_roles("admin", "content-manager")),
     db: Session = Depends(get_db),
 ):
-    db.add(
-        TaskBoard(
-            code=code.strip(),
-            name=name.strip(),
-            description=description.strip() or None,
-            is_active=active is not None,
+    created = False
+    for _ in range(5):
+        existing_codes = list(db.scalars(select(TaskBoard.code)).all())
+        next_code = _next_auto_code(existing_codes, "K")
+        db.add(
+            TaskBoard(
+                code=next_code,
+                name=name.strip(),
+                description=description.strip() or None,
+                is_active=active is not None,
+            )
         )
-    )
-    try:
-        db.commit()
-        _set_flash(request, "Доска создана", "success")
-    except IntegrityError:
-        db.rollback()
-        _set_flash(request, "Код доски должен быть уникален", "error")
+        try:
+            db.commit()
+            _set_flash(request, f"Доска создана ({next_code})", "success")
+            created = True
+            break
+        except IntegrityError:
+            db.rollback()
+    if not created:
+        _set_flash(request, "Не удалось создать доску: повторите попытку", "error")
     return _redirect("/boards")
 
 
@@ -707,7 +1085,6 @@ def create_board(
 def update_board(
     board_id: int,
     request: Request,
-    code: str = Form(...),
     name: str = Form(...),
     description: str = Form(""),
     active: str | None = Form(None),
@@ -716,7 +1093,6 @@ def update_board(
 ):
     board = db.get(TaskBoard, board_id)
     if board:
-        board.code = code.strip()
         board.name = name.strip()
         board.description = description.strip() or None
         board.is_active = active is not None
@@ -1185,12 +1561,19 @@ def update_collection(
 ):
     collection = db.get(Collection, collection_id)
     if collection:
+        new_is_active = active is not None
+        if collection.is_active and not new_is_active:
+            usage = _collection_usage_count(db, collection.id)
+            if usage:
+                _set_flash(request, "Нельзя деактивировать коллекцию: она используется в изделиях", "error")
+                return _redirect("/collections")
+
         collection.code = code.strip()
         collection.name = name.strip()
         collection.season = season.strip().upper()
         collection.year = year
         collection.brand_line = brand_line.strip() or None
-        collection.is_active = active is not None
+        collection.is_active = new_is_active
         try:
             db.commit()
             _set_flash(request, "Коллекция обновлена", "success")
@@ -1294,11 +1677,18 @@ def update_supplier(
 ):
     supplier = db.get(Supplier, supplier_id)
     if supplier:
+        new_is_active = active is not None
+        if supplier.is_active and not new_is_active:
+            usage = _supplier_usage_count(db, supplier.id)
+            if usage:
+                _set_flash(request, "Нельзя деактивировать поставщика: он используется в изделиях", "error")
+                return _redirect("/suppliers")
+
         supplier.code = code.strip()
         supplier.name = name.strip()
         supplier.country = country.strip()
         supplier.contact_email = contact_email.strip() or None
-        supplier.is_active = active is not None
+        supplier.is_active = new_is_active
         try:
             db.commit()
             _set_flash(request, "Поставщик обновлен", "success")
@@ -1423,9 +1813,16 @@ def delete_dictionary(
     if not dictionary:
         return _redirect("/dictionaries")
 
-    in_use = db.execute(select(Attribute.id).where(Attribute.dictionary_id == dictionary.id).limit(1)).first() is not None
-    if in_use:
-        _set_flash(request, "Нельзя удалить справочник: он привязан к атрибутам", "error")
+    used_by_attributes, used_in_categories, used_in_attribute_values = _dictionary_usage_counts(db, dictionary.id)
+    if used_by_attributes or used_in_categories or used_in_attribute_values:
+        reasons: list[str] = []
+        if used_by_attributes:
+            reasons.append(f"привязан к атрибутам ({used_by_attributes})")
+        if used_in_categories:
+            reasons.append(f"используется как категория в товарах ({used_in_categories})")
+        if used_in_attribute_values:
+            reasons.append(f"используется в значениях атрибутов товаров ({used_in_attribute_values})")
+        _set_flash(request, f"Нельзя удалить справочник: {', '.join(reasons)}", "error")
         return _redirect(f"/dictionaries/{dictionary_id}")
 
     db.delete(dictionary)
@@ -1476,10 +1873,17 @@ def update_dictionary_item(
 ):
     item = db.get(DictionaryItem, item_id)
     if item:
+        new_is_active = active is not None
+        if item.is_active and not new_is_active:
+            used_as_category, used_in_attribute_values = _dictionary_item_usage_counts(db, item.id)
+            if used_as_category or used_in_attribute_values:
+                _set_flash(request, "Нельзя деактивировать элемент: он используется в товарах", "error")
+                return _redirect(f"/dictionaries/{item.dictionary_id}")
+
         item.code = code.strip()
         item.label = label.strip()
         item.sort_order = sort_order
-        item.is_active = active is not None
+        item.is_active = new_is_active
         try:
             db.commit()
             _set_flash(request, "Элемент справочника обновлен", "success")
@@ -1501,12 +1905,14 @@ def delete_dictionary_item(
     if not item:
         return _redirect("/dictionaries")
 
-    used_in_products = db.execute(
-        select(ProductAttributeValue.id).where(ProductAttributeValue.dictionary_item_id == item.id).limit(1)
-    ).first()
-    used_as_category = db.execute(select(Product.id).where(Product.category_item_id == item.id).limit(1)).first()
-    if used_in_products or used_as_category:
-        _set_flash(request, "Нельзя удалить элемент: он уже используется", "error")
+    used_as_category, used_in_attribute_values = _dictionary_item_usage_counts(db, item.id)
+    if used_as_category or used_in_attribute_values:
+        reasons: list[str] = []
+        if used_as_category:
+            reasons.append(f"категория у товаров ({used_as_category})")
+        if used_in_attribute_values:
+            reasons.append(f"значения атрибутов товаров ({used_in_attribute_values})")
+        _set_flash(request, f"Нельзя удалить элемент: используется в {', '.join(reasons)}", "error")
         return _redirect(f"/dictionaries/{item.dictionary_id}")
 
     dictionary_id = item.dictionary_id
@@ -1570,6 +1976,9 @@ def create_attribute(
             dictionary_id = int(dictionary_id_raw)
         except ValueError:
             _set_flash(request, "Некорректный справочник", "error")
+            return _redirect("/attributes")
+        if not db.get(Dictionary, dictionary_id):
+            _set_flash(request, "Справочник не найден", "error")
             return _redirect("/attributes")
 
     db.add(
@@ -1655,6 +2064,9 @@ def update_attribute(
         except ValueError:
             _set_flash(request, "Некорректный справочник", "error")
             return _redirect(f"/attributes/{attribute_id}")
+        if not db.get(Dictionary, dictionary_id):
+            _set_flash(request, "Справочник не найден", "error")
+            return _redirect(f"/attributes/{attribute_id}")
     attribute.dictionary_id = dictionary_id if data_type == "enum" else None
 
     try:
@@ -1710,8 +2122,6 @@ def products_page(
         joinedload(Product.category_item),
         selectinload(Product.spec).joinedload(ProductSpec.collection),
     )
-    if q:
-        stmt = stmt.where(or_(Product.name.ilike(f"%{q}%"), Product.sku.ilike(f"%{q}%")))
     if status_filter:
         stmt = stmt.where(Product.status == status_filter)
     if category_id:
@@ -1727,6 +2137,9 @@ def products_page(
         stmt = stmt.order_by(Product.updated_at.desc())
 
     products = list(db.scalars(stmt).all())
+    if q:
+        q_norm = q.casefold().strip()
+        products = [p for p in products if q_norm in (p.name or "").casefold() or q_norm in (p.sku or "").casefold()]
     category_items = get_category_items(db)
     collections = list(db.scalars(select(Collection).where(Collection.is_active.is_(True)).order_by(Collection.year.desc())).all())
 
@@ -1772,6 +2185,9 @@ def create_product(
         except ValueError:
             _set_flash(request, "Некорректная категория", "error")
             return _redirect("/products")
+        if not _is_valid_category_item(db, category_id):
+            _set_flash(request, "Выбрана несуществующая или неактивная категория", "error")
+            return _redirect("/products")
 
     product = Product(
         sku=sku.strip(),
@@ -1815,6 +2231,11 @@ def product_detail(
         select(Product)
         .options(
             joinedload(Product.category_item),
+            joinedload(Product.designer),
+            joinedload(Product.product_manager),
+            joinedload(Product.pattern_maker),
+            joinedload(Product.technologist),
+            joinedload(Product.department_head),
             selectinload(Product.spec).joinedload(ProductSpec.collection),
             selectinload(Product.spec).joinedload(ProductSpec.supplier),
             selectinload(Product.files).joinedload(ProductFile.uploader),
@@ -1828,7 +2249,18 @@ def product_detail(
     category_items = get_category_items(db)
     collections = list(db.scalars(select(Collection).where(Collection.is_active.is_(True)).order_by(Collection.year.desc())).all())
     suppliers = list(db.scalars(select(Supplier).where(Supplier.is_active.is_(True)).order_by(Supplier.name.asc())).all())
-    completeness_errors = validate_product_completeness(db, product)
+    active_users = list(db.scalars(select(User).where(User.is_active.is_(True)).order_by(User.login.asc())).all())
+    attribute_assignments = list(
+        db.scalars(
+            select(ProductAttributeAssignment)
+            .options(
+                joinedload(ProductAttributeAssignment.attribute),
+                selectinload(ProductAttributeAssignment.values).joinedload(ProductAttributeValue.dictionary_item),
+            )
+            .where(ProductAttributeAssignment.product_id == product_id)
+            .order_by(ProductAttributeAssignment.id.asc())
+        ).all()
+    )
     return _render(
         request,
         "products/detail.html",
@@ -1841,8 +2273,10 @@ def product_detail(
             "suppliers": suppliers,
             "sample_stages": ["proto", "salesman_sample", "pp_sample", "production"],
             "file_categories": FILE_CATEGORIES,
+            "active_users": active_users,
+            "attribute_assignments": attribute_assignments,
+            "get_value_view": get_value_view,
             "can_manage": user.role in {"admin", "content-manager"},
-            "completeness_errors": completeness_errors,
             "user": user,
         },
     )
@@ -1874,6 +2308,9 @@ def update_product(
             category_id = int(category_id_raw)
         except ValueError:
             _set_flash(request, "Некорректная категория", "error")
+            return _redirect(f"/products/{product_id}")
+        if not _is_valid_category_item(db, category_id):
+            _set_flash(request, "Выбрана несуществующая или неактивная категория", "error")
             return _redirect(f"/products/{product_id}")
 
     product.sku = sku.strip()
@@ -2080,6 +2517,17 @@ def update_product_spec(
         _set_flash(request, "Проверьте числовые поля fashion-спецификации", "error")
         return _redirect(f"/products/{product_id}")
 
+    if collection_id is not None:
+        collection = db.get(Collection, collection_id)
+        if not collection or not collection.is_active:
+            _set_flash(request, "Выбрана несуществующая или неактивная коллекция", "error")
+            return _redirect(f"/products/{product_id}")
+    if supplier_id is not None:
+        supplier = db.get(Supplier, supplier_id)
+        if not supplier or not supplier.is_active:
+            _set_flash(request, "Выбран несуществующий или неактивный поставщик", "error")
+            return _redirect(f"/products/{product_id}")
+
     spec = db.scalar(select(ProductSpec).where(ProductSpec.product_id == product_id))
     if not spec:
         spec = ProductSpec(product_id=product_id)
@@ -2105,6 +2553,59 @@ def update_product_spec(
     return _redirect(f"/products/{product_id}")
 
 
+@app.post("/products/{product_id}/team")
+def update_product_team(
+    product_id: int,
+    request: Request,
+    designer_id_raw: str = Form(""),
+    product_manager_id_raw: str = Form(""),
+    pattern_maker_id_raw: str = Form(""),
+    technologist_id_raw: str = Form(""),
+    department_head_id_raw: str = Form(""),
+    user: User = Depends(require_roles("admin", "content-manager")),
+    db: Session = Depends(get_db),
+):
+    product = db.get(Product, product_id)
+    if not product:
+        return _redirect("/products")
+
+    def parse_user_id(raw: str) -> int | None:
+        return int(raw) if raw.strip() else None
+
+    try:
+        designer_id = parse_user_id(designer_id_raw)
+        product_manager_id = parse_user_id(product_manager_id_raw)
+        pattern_maker_id = parse_user_id(pattern_maker_id_raw)
+        technologist_id = parse_user_id(technologist_id_raw)
+        department_head_id = parse_user_id(department_head_id_raw)
+    except ValueError:
+        _set_flash(request, "Проверьте корректность выбранных пользователей", "error")
+        return _redirect(f"/products/{product_id}")
+
+    def ensure_active(user_id: int | None) -> bool:
+        if user_id is None:
+            return True
+        return db.scalar(select(User.id).where(User.id == user_id, User.is_active.is_(True))) is not None
+
+    if not all(
+        ensure_active(uid)
+        for uid in [designer_id, product_manager_id, pattern_maker_id, technologist_id, department_head_id]
+    ):
+        _set_flash(request, "Выбран несуществующий или неактивный пользователь", "error")
+        return _redirect(f"/products/{product_id}")
+
+    product.designer_id = designer_id
+    product.product_manager_id = product_manager_id
+    product.pattern_maker_id = pattern_maker_id
+    product.technologist_id = technologist_id
+    product.department_head_id = department_head_id
+    product.updated_by = user.id
+    product.updated_at = datetime.utcnow()
+    db.commit()
+    _set_flash(request, "Команда изделия обновлена", "success")
+    return _redirect(f"/products/{product_id}")
+
+
 @app.post("/products/{product_id}/archive")
 def archive_product(
     product_id: int,
@@ -2118,25 +2619,6 @@ def archive_product(
         product.updated_by = user.id
         db.commit()
         _set_flash(request, "Изделие архивировано", "success")
-    return _redirect(f"/products/{product_id}")
-
-
-@app.post("/products/{product_id}/validate")
-def validate_product(
-    product_id: int,
-    request: Request,
-    _: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    product = db.get(Product, product_id)
-    if not product:
-        return _redirect("/products")
-
-    errors = validate_product_completeness(db, product)
-    if errors:
-        _set_flash(request, "Проверка полноты: есть незаполненные обязательные атрибуты", "error")
-    else:
-        _set_flash(request, "Проверка полноты пройдена успешно", "success")
     return _redirect(f"/products/{product_id}")
 
 

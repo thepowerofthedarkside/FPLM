@@ -1,7 +1,29 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block content %}
 <h1>Пользователь: {{ target.login }}</h1>
 <div class="card">
+  <form method="post" action="/users/{{ target.id }}/profile" class="grid">
+    <div><label>ФИО</label><input name="full_name" value="{{ target.full_name or '' }}"></div>
+    <div>
+      <label>Подразделение</label>
+      <select name="department_id_raw">
+        <option value="">-</option>
+        {% for d in department_items %}
+        <option value="{{ d.id }}" {% if target.department_item_id==d.id %}selected{% endif %}>{{ d.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Должность</label>
+      <select name="position_id_raw">
+        <option value="">-</option>
+        {% for p in position_items %}
+        <option value="{{ p.id }}" {% if target.position_item_id==p.id %}selected{% endif %}>{{ p.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div><label>&nbsp;</label><button type="submit" class="secondary">Сохранить профиль</button></div>
+  </form>
   <form method="post" action="/users/{{ target.id }}/role" class="grid">
     <div>
       <label>Роль</label>

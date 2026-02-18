@@ -22,9 +22,16 @@ class User(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     login: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(300), nullable=False)
+    full_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    department: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    position: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    department_item_id: Mapped[int | None] = mapped_column(ForeignKey("dictionary_items.id"), nullable=True)
+    position_item_id: Mapped[int | None] = mapped_column(ForeignKey("dictionary_items.id"), nullable=True)
     role: Mapped[str] = mapped_column(String(30), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    department_item: Mapped["DictionaryItem | None"] = relationship("DictionaryItem", foreign_keys=[department_item_id])
+    position_item: Mapped["DictionaryItem | None"] = relationship("DictionaryItem", foreign_keys=[position_item_id])
 
 
 class Dictionary(Base):
@@ -79,6 +86,11 @@ class Product(Base):
     cover_image_path: Mapped[str | None] = mapped_column(String(300), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="draft", nullable=False)
     category_item_id: Mapped[int | None] = mapped_column(ForeignKey("dictionary_items.id"), nullable=True)
+    designer_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    product_manager_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    pattern_maker_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    technologist_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    department_head_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
@@ -87,6 +99,11 @@ class Product(Base):
     updated_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
 
     category_item: Mapped[DictionaryItem | None] = relationship("DictionaryItem")
+    designer: Mapped[User | None] = relationship("User", foreign_keys=[designer_id])
+    product_manager: Mapped[User | None] = relationship("User", foreign_keys=[product_manager_id])
+    pattern_maker: Mapped[User | None] = relationship("User", foreign_keys=[pattern_maker_id])
+    technologist: Mapped[User | None] = relationship("User", foreign_keys=[technologist_id])
+    department_head: Mapped[User | None] = relationship("User", foreign_keys=[department_head_id])
     spec: Mapped["ProductSpec | None"] = relationship(
         "ProductSpec", back_populates="product", cascade="all, delete-orphan", uselist=False
     )

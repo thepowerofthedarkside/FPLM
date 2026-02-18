@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block content %}
 <h1>Пользователи</h1>
 <div class="card">
@@ -6,6 +6,21 @@
   <form method="post" action="/users" class="grid">
     <div><label>Логин</label><input name="login" required></div>
     <div><label>Пароль</label><input name="password" required></div>
+    <div><label>ФИО</label><input name="full_name"></div>
+    <div>
+      <label>Подразделение</label>
+      <select name="department_id_raw">
+        <option value="">-</option>
+        {% for d in department_items %}<option value="{{ d.id }}">{{ d.label }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Должность</label>
+      <select name="position_id_raw">
+        <option value="">-</option>
+        {% for p in position_items %}<option value="{{ p.id }}">{{ p.label }}</option>{% endfor %}
+      </select>
+    </div>
     <div>
       <label>Роль</label>
       <select name="role">
@@ -18,12 +33,15 @@
 </div>
 <div class="card table-wrap">
   <table>
-    <thead><tr><th>ID</th><th>Логин</th><th>Роль</th><th>Статус</th></tr></thead>
+    <thead><tr><th>ID</th><th>Логин</th><th>ФИО</th><th>Подразделение</th><th>Должность</th><th>Роль</th><th>Статус</th></tr></thead>
     <tbody>
       {% for item in users %}
       <tr>
         <td>{{ item.id }}</td>
         <td><a href="/users/{{ item.id }}">{{ item.login }}</a></td>
+        <td>{{ item.full_name or '' }}</td>
+        <td>{{ item.department_item.label if item.department_item else (item.department or '') }}</td>
+        <td>{{ item.position_item.label if item.position_item else (item.position or '') }}</td>
         <td>{{ role_labels.get(item.role, item.role) }}</td>
         <td>{{ "Активен" if item.is_active else "Заблокирован" }}</td>
       </tr>

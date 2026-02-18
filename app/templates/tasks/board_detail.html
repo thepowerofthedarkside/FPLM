@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block content %}
 <h1>Доска: {{ board.name }}</h1>
 <div class="card">
@@ -15,7 +15,6 @@
         <form method="dialog"><button type="submit" class="secondary">Закрыть</button></form>
       </div>
       <form method="post" action="/boards/{{ board.id }}/update" class="grid">
-        <div><label>Код</label><input name="code" value="{{ board.code }}" required></div>
         <div><label>Название</label><input name="name" value="{{ board.name }}" required></div>
         <div><label>Описание</label><input name="description" value="{{ board.description or '' }}"></div>
         <div><label><input type="checkbox" name="active" {% if board.is_active %}checked{% endif %}> Активна</label></div>

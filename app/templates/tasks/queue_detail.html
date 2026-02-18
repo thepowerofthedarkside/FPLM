@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block content %}
 <h1>Очередь: {{ queue.name }}</h1>
 <p class="muted">Код: {{ queue.code }}{% if queue.description %} | {{ queue.description }}{% endif %}</p>
@@ -6,6 +6,9 @@
   <form method="get" action="/queues/{{ queue.id }}" class="inline">
     <input name="q" value="{{ q or '' }}" placeholder="Быстрый поиск по атрибутам задач">
     <button type="submit" class="secondary">Поиск</button>
+  </form>
+  <form method="get" action="/queues/{{ queue.id }}" class="inline">
+    <button type="submit" class="secondary">Сбросить фильтр</button>
   </form>
   <button type="button" class="secondary" onclick="document.getElementById('queueFilterModal').showModal()">Фильтр по атрибутам</button>
 </div>
@@ -23,6 +26,7 @@
       <div><label>Коллекция</label><select name="collection_id_raw"><option value="">Все</option>{% for c in collections %}<option value="{{ c.id }}" {% if selected_collection_id==c.id %}selected{% endif %}>{{ c.code }} - {{ c.name }}</option>{% endfor %}</select></div>
       <div><label>Изделие</label><select name="product_id_raw"><option value="">Все</option>{% for p in products %}<option value="{{ p.id }}" {% if selected_product_id==p.id %}selected{% endif %}>{{ p.sku }} - {{ p.name }}</option>{% endfor %}</select></div>
       <div><button type="submit">Применить фильтр</button></div>
+      <div><button type="submit" formaction="/queues/{{ queue.id }}" formmethod="get" class="secondary">Сбросить фильтр</button></div>
     </form>
   </div>
 </dialog>
@@ -63,7 +67,6 @@
       <form method="dialog"><button type="submit" class="secondary">Закрыть</button></form>
     </div>
     <form method="post" action="/queues/{{ queue.id }}/update" class="grid">
-      <div><label>Код</label><input name="code" value="{{ queue.code }}" required></div>
       <div><label>Название</label><input name="name" value="{{ queue.name }}" required></div>
       <div><label>Описание</label><input name="description" value="{{ queue.description or '' }}"></div>
       <div><label><input type="checkbox" name="active" {% if queue.is_active %}checked{% endif %}> Активна</label></div>

@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block content %}
 <h1>Атрибуты</h1>
 <div class="card">
@@ -12,6 +12,7 @@
       </select>
     </div>
     <div><label>&nbsp;</label><button type="submit" class="secondary">Фильтр</button></div>
+    <div><label>&nbsp;</label><button type="submit" formaction="/attributes" formmethod="get" class="secondary">Сбросить фильтр</button></div>
   </form>
 </div>
 

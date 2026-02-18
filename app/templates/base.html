@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
@@ -10,7 +10,7 @@
   {% if user %}
   <nav>
     <div class="container">
-      <div>
+      <div class="nav-left">
         <a href="/products">Изделия</a>
         <a href="/queues">Очереди задач</a>
         <a href="/boards">Канбан</a>
@@ -21,8 +21,9 @@
         {% if user.role == 'admin' %}<a href="/users">Пользователи</a>{% endif %}
         {% if user.role == 'admin' %}<a href="/settings">Настройки</a>{% endif %}
       </div>
-      <div>
-        {{ user.login }} ({{ role_labels.get(user.role, user.role) }})
+      <div class="nav-right">
+        <a href="/cabinet">Кабинет</a>
+        <span>{{ user.login }} ({{ role_labels.get(user.role, user.role) }})</span>
         <a href="/logout">Выход</a>
       </div>
     </div>
