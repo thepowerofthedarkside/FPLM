@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Кабинет</h1>
+
+<div class="card">
+  <h3>Мои задачи: я автор</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>ID</th><th>Название</th><th>Статус</th><th>Исполнитель</th><th>Изделие</th><th>Обновлено</th></tr></thead>
+      <tbody>
+        {% for t in authored_tasks %}
+        <tr>
+          <td>{{ t.id }}</td>
+          <td><a href="/tasks/{{ t.id }}">{{ t.title }}</a></td>
+          <td>{{ task_status_labels.get(t.status, t.status) }}</td>
+          <td>{{ t.assignee.login if t.assignee else '' }}</td>
+          <td>{% if t.product %}<a href="/products/{{ t.product.id }}">{{ t.product.name }}</a>{% endif %}</td>
+          <td>{{ t.updated_at.strftime('%Y-%m-%d') if t.updated_at else '' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Мои задачи: я исполнитель</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>ID</th><th>Название</th><th>Статус</th><th>Автор</th><th>Изделие</th><th>Обновлено</th></tr></thead>
+      <tbody>
+        {% for t in assigned_tasks %}
+        <tr>
+          <td>{{ t.id }}</td>
+          <td><a href="/tasks/{{ t.id }}">{{ t.title }}</a></td>
+          <td>{{ task_status_labels.get(t.status, t.status) }}</td>
+          <td>{{ t.author.login if t.author else '' }}</td>
+          <td>{% if t.product %}<a href="/products/{{ t.product.id }}">{{ t.product.name }}</a>{% endif %}</td>
+          <td>{{ t.updated_at.strftime('%Y-%m-%d') if t.updated_at else '' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Мои изделия</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>SKU</th><th>Наименование</th><th>Статус</th><th>Роль</th></tr></thead>
+      <tbody>
+        {% for p in products %}
+        <tr>
+          <td>{{ p.sku }}</td>
+          <td><a href="/products/{{ p.id }}">{{ p.name }}</a></td>
+          <td>{{ status_labels.get(p.status, p.status) }}</td>
+          <td>
+            {% if p.created_by == user.id %}Автор{% endif %}
+            {% if p.designer_id == user.id %}{% if p.created_by == user.id %}, {% endif %}Дизайнер{% endif %}
+            {% if p.product_manager_id == user.id %}{% if p.created_by == user.id or p.designer_id == user.id %}, {% endif %}Продукт менеджер{% endif %}
+            {% if p.pattern_maker_id == user.id %}{% if p.created_by == user.id or p.designer_id == user.id or p.product_manager_id == user.id %}, {% endif %}Конструктор-модельер{% endif %}
+            {% if p.technologist_id == user.id %}{% if p.created_by == user.id or p.designer_id == user.id or p.product_manager_id == user.id or p.pattern_maker_id == user.id %}, {% endif %}Технолог{% endif %}
+            {% if p.department_head_id == user.id %}{% if p.created_by == user.id or p.designer_id == user.id or p.product_manager_id == user.id or p.pattern_maker_id == user.id or p.technologist_id == user.id %}, {% endif %}Руководитель отдела{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
