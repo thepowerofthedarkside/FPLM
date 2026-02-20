@@ -2,15 +2,23 @@
 {% block content %}
 <h1>Справочники</h1>
 {% if can_manage %}
-<div class="card">
-  <h3>Создать справочник</h3>
-  <form method="post" action="/dictionaries" class="grid">
-    <div><label>Код</label><input name="code" required></div>
-    <div><label>Наименование</label><input name="name" required></div>
-    <div><label>Описание</label><input name="description"></div>
-    <div><button type="submit">Создать</button></div>
-  </form>
+<div class="modal-actions">
+  <button type="button" onclick="document.getElementById('createDictionaryModal').showModal()">Создать</button>
 </div>
+<dialog id="createDictionaryModal" class="modal">
+  <div class="modal-body">
+    <div class="modal-header">
+      <h3>Создать справочник</h3>
+      <form method="dialog"><button type="submit" class="secondary">Закрыть</button></form>
+    </div>
+    <form method="post" action="/dictionaries" class="grid">
+      <div><label>Код</label><input name="code" required></div>
+      <div><label>Наименование</label><input name="name" required></div>
+      <div><label>Описание</label><input name="description"></div>
+      <div><button type="submit">Создать</button></div>
+    </form>
+  </div>
+</dialog>
 {% endif %}
 <div class="card table-wrap">
   <table>

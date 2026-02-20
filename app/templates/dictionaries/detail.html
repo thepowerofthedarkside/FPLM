@@ -3,15 +3,42 @@
 <h1>Справочник: {{ dictionary.name }}</h1>
 <div class="card">
   {% if can_manage %}
-  <form method="post" action="/dictionaries/{{ dictionary.id }}/update" class="grid">
-    <div><label>Код</label><input name="code" value="{{ dictionary.code }}" required></div>
-    <div><label>Наименование</label><input name="name" value="{{ dictionary.name }}" required></div>
-    <div><label>Описание</label><input name="description" value="{{ dictionary.description or '' }}"></div>
-    <div><button type="submit">Сохранить</button></div>
-  </form>
-  <form method="post" action="/dictionaries/{{ dictionary.id }}/delete" onsubmit="return confirm('Удалить справочник?');" style="margin-top:8px;">
-    <button type="submit" class="danger">Удалить справочник</button>
-  </form>
+  <div class="modal-actions">
+    <button type="button" onclick="document.getElementById('editDictionaryModal').showModal()">Редактировать</button>
+    <button type="button" class="secondary" onclick="document.getElementById('createDictionaryItemModal').showModal()">Добавить элемент</button>
+    <form method="post" action="/dictionaries/{{ dictionary.id }}/delete" class="inline" onsubmit="return confirm('Удалить справочник?');">
+      <button type="submit" class="danger">Удалить справочник</button>
+    </form>
+  </div>
+  <dialog id="editDictionaryModal" class="modal">
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3>Редактировать справочник</h3>
+        <form method="dialog"><button type="submit" class="secondary">Закрыть</button></form>
+      </div>
+      <form method="post" action="/dictionaries/{{ dictionary.id }}/update" class="grid">
+        <div><label>Код</label><input name="code" value="{{ dictionary.code }}" required></div>
+        <div><label>Наименование</label><input name="name" value="{{ dictionary.name }}" required></div>
+        <div><label>Описание</label><input name="description" value="{{ dictionary.description or '' }}"></div>
+        <div><button type="submit">Сохранить</button></div>
+      </form>
+    </div>
+  </dialog>
+  <dialog id="createDictionaryItemModal" class="modal">
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3>Добавить элемент</h3>
+        <form method="dialog"><button type="submit" class="secondary">Закрыть</button></form>
+      </div>
+      <form method="post" action="/dictionaries/{{ dictionary.id }}/items" class="grid">
+        <div><label>Код</label><input name="code" required></div>
+        <div><label>Отображаемое значение</label><input name="label" required></div>
+        <div><label>Порядок</label><input name="sort_order" type="number" value="0"></div>
+        <div><label><input type="checkbox" name="active" checked> Активен</label></div>
+        <div><button type="submit">Добавить</button></div>
+      </form>
+    </div>
+  </dialog>
   {% else %}
   <p><b>Код:</b> {{ dictionary.code }}</p>
   <p>{{ dictionary.description or '' }}</p>
@@ -27,19 +54,6 @@
   {% endif %}
 </div>
 
-{% if can_manage %}
-<div class="card">
-  <h3>Добавить элемент</h3>
-  <form method="post" action="/dictionaries/{{ dictionary.id }}/items" class="grid">
-    <div><label>Код</label><input name="code" required></div>
-    <div><label>Отображаемое значение</label><input name="label" required></div>
-    <div><label>Порядок</label><input name="sort_order" type="number" value="0"></div>
-    <div><label><input type="checkbox" name="active" checked> Активен</label></div>
-    <div><button type="submit">Добавить</button></div>
-  </form>
-</div>
-{% endif %}
-
 <div class="card table-wrap">
   <table>
     <thead><tr><th>Код</th><th>Значение</th><th>Порядок</th><th>Статус</th><th>Действия</th></tr></thead>
@@ -52,16 +66,27 @@
         <td>{{ "Активен" if item.is_active else "Неактивен" }}</td>
         <td>
           {% if can_manage %}
-          <form method="post" action="/dictionary-items/{{ item.id }}/update" class="grid" style="grid-template-columns:repeat(5,minmax(100px,1fr));">
-            <input name="code" value="{{ item.code }}" required>
-            <input name="label" value="{{ item.label }}" required>
-            <input name="sort_order" type="number" value="{{ item.sort_order }}">
-            <label><input type="checkbox" name="active" {% if item.is_active %}checked{% endif %}> Активен</label>
-            <button type="submit" class="secondary">Сохранить</button>
-          </form>
-          <form method="post" action="/dictionary-items/{{ item.id }}/delete" class="inline" onsubmit="return confirm('Удалить элемент?');">
-            <button type="submit" class="danger">Удалить</button>
-          </form>
+          <div class="actions">
+            <button type="button" class="secondary" onclick="document.getElementById('editDictionaryItemModal{{ item.id }}').showModal()">Редактировать</button>
+            <form method="post" action="/dictionary-items/{{ item.id }}/delete" class="inline" onsubmit="return confirm('Удалить элемент?');">
+              <button type="submit" class="danger">Удалить</button>
+            </form>
+          </div>
+          <dialog id="editDictionaryItemModal{{ item.id }}" class="modal">
+            <div class="modal-body">
+              <div class="modal-header">
+                <h3>Редактировать элемент</h3>
+                <form method="dialog"><button type="submit" class="secondary">Закрыть</button></form>
+              </div>
+              <form method="post" action="/dictionary-items/{{ item.id }}/update" class="grid">
+                <div><label>Код</label><input name="code" value="{{ item.code }}" required></div>
+                <div><label>Отображаемое значение</label><input name="label" value="{{ item.label }}" required></div>
+                <div><label>Порядок</label><input name="sort_order" type="number" value="{{ item.sort_order }}"></div>
+                <div><label><input type="checkbox" name="active" {% if item.is_active %}checked{% endif %}> Активен</label></div>
+                <div><button type="submit">Сохранить</button></div>
+              </form>
+            </div>
+          </dialog>
           {% endif %}
         </td>
       </tr>

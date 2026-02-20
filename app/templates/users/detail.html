@@ -2,39 +2,61 @@
 {% block content %}
 <h1>Пользователь: {{ target.login }}</h1>
 <div class="card">
-  <form method="post" action="/users/{{ target.id }}/profile" class="grid">
-    <div><label>ФИО</label><input name="full_name" value="{{ target.full_name or '' }}"></div>
-    <div>
-      <label>Подразделение</label>
-      <select name="department_id_raw">
-        <option value="">-</option>
-        {% for d in department_items %}
-        <option value="{{ d.id }}" {% if target.department_item_id==d.id %}selected{% endif %}>{{ d.label }}</option>
-        {% endfor %}
-      </select>
+  <p><b>Логин:</b> {{ target.login }}</p>
+  <p><b>ФИО:</b> {{ target.full_name or '-' }}</p>
+  <p><b>Подразделение:</b> {{ target.department_item.label if target.department_item else '-' }}</p>
+  <p><b>Должность:</b> {{ target.position_item.label if target.position_item else '-' }}</p>
+  <p><b>Роль:</b> {{ role_labels.get(target.role, target.role) }}</p>
+  <p><b>Статус:</b> {{ 'Активен' if target.is_active else 'Заблокирован' }}</p>
+
+  <div class="modal-actions">
+    <button type="button" onclick="document.getElementById('editUserDetailModal').showModal()">Редактировать</button>
+  </div>
+
+  <dialog id="editUserDetailModal" class="modal">
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3>Редактировать: {{ target.login }}</h3>
+        <form method="dialog"><button type="submit" class="secondary">Закрыть</button></form>
+      </div>
+
+      <form method="post" action="/users/{{ target.id }}/profile" class="grid">
+        <div><label>ФИО</label><input name="full_name" value="{{ target.full_name or '' }}"></div>
+        <div>
+          <label>Подразделение</label>
+          <select name="department_id_raw">
+            <option value="">-</option>
+            {% for d in department_items %}
+            <option value="{{ d.id }}" {% if target.department_item_id==d.id %}selected{% endif %}>{{ d.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label>Должность</label>
+          <select name="position_id_raw">
+            <option value="">-</option>
+            {% for p in position_items %}
+            <option value="{{ p.id }}" {% if target.position_item_id==p.id %}selected{% endif %}>{{ p.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div><button type="submit" class="secondary">Сохранить профиль</button></div>
+      </form>
+
+      <form method="post" action="/users/{{ target.id }}/role" class="grid" style="margin-top:10px;">
+        <div>
+          <label>Роль</label>
+          <select name="role">
+            {% for role in roles %}<option value="{{ role }}" {% if role==target.role %}selected{% endif %}>{{ role_labels.get(role, role) }}</option>{% endfor %}
+          </select>
+        </div>
+        <div><button type="submit">Сохранить роль</button></div>
+      </form>
+
+      <form method="post" action="/users/{{ target.id }}/toggle" style="margin-top:10px;" onsubmit="return confirm('Изменить статус пользователя?');">
+        <button type="submit" class="warn">{{ 'Блокировать' if target.is_active else 'Разблокировать' }}</button>
+      </form>
     </div>
-    <div>
-      <label>Должность</label>
-      <select name="position_id_raw">
-        <option value="">-</option>
-        {% for p in position_items %}
-        <option value="{{ p.id }}" {% if target.position_item_id==p.id %}selected{% endif %}>{{ p.label }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div><label>&nbsp;</label><button type="submit" class="secondary">Сохранить профиль</button></div>
-  </form>
-  <form method="post" action="/users/{{ target.id }}/role" class="grid">
-    <div>
-      <label>Роль</label>
-      <select name="role">
-        {% for role in roles %}<option value="{{ role }}" {% if role==target.role %}selected{% endif %}>{{ role_labels.get(role, role) }}</option>{% endfor %}
-      </select>
-    </div>
-    <div><label>&nbsp;</label><button type="submit">Сохранить роль</button></div>
-  </form>
-  <form method="post" action="/users/{{ target.id }}/toggle" style="margin-top:10px;">
-    <button type="submit" class="warn">{{ 'Блокировать' if target.is_active else 'Разблокировать' }}</button>
-  </form>
+  </dialog>
 </div>
 {% endblock %}

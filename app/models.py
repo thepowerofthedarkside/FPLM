@@ -193,7 +193,9 @@ class TaskBoard(Base):
     code: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    filter_queue_id: Mapped[int | None] = mapped_column(ForeignKey("task_queues.id"), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    filter_queue: Mapped["TaskQueue | None"] = relationship("TaskQueue")
 
 
 class Task(Base):

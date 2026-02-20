@@ -1,39 +1,50 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Пользователи</h1>
-<div class="card">
-  <h3>Создать пользователя</h3>
-  <form method="post" action="/users" class="grid">
-    <div><label>Логин</label><input name="login" required></div>
-    <div><label>Пароль</label><input name="password" required></div>
-    <div><label>ФИО</label><input name="full_name"></div>
-    <div>
-      <label>Подразделение</label>
-      <select name="department_id_raw">
-        <option value="">-</option>
-        {% for d in department_items %}<option value="{{ d.id }}">{{ d.label }}</option>{% endfor %}
-      </select>
-    </div>
-    <div>
-      <label>Должность</label>
-      <select name="position_id_raw">
-        <option value="">-</option>
-        {% for p in position_items %}<option value="{{ p.id }}">{{ p.label }}</option>{% endfor %}
-      </select>
-    </div>
-    <div>
-      <label>Роль</label>
-      <select name="role">
-        {% for role in roles %}<option value="{{ role }}">{{ role_labels.get(role, role) }}</option>{% endfor %}
-      </select>
-    </div>
-    <div><label><input type="checkbox" name="active" checked> Активен</label></div>
-    <div><button type="submit">Создать</button></div>
-  </form>
+
+<div class="modal-actions">
+  <button type="button" onclick="document.getElementById('createUserModal').showModal()">Создать</button>
 </div>
+
+<dialog id="createUserModal" class="modal">
+  <div class="modal-body">
+    <div class="modal-header">
+      <h3>Создать пользователя</h3>
+      <form method="dialog"><button type="submit" class="secondary">Закрыть</button></form>
+    </div>
+    <form method="post" action="/users" class="grid">
+      <div><label>Логин</label><input name="login" required></div>
+      <div><label>Пароль</label><input name="password" required></div>
+      <div><label>ФИО</label><input name="full_name"></div>
+      <div>
+        <label>Подразделение</label>
+        <select name="department_id_raw">
+          <option value="">-</option>
+          {% for d in department_items %}<option value="{{ d.id }}">{{ d.label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Должность</label>
+        <select name="position_id_raw">
+          <option value="">-</option>
+          {% for p in position_items %}<option value="{{ p.id }}">{{ p.label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Роль</label>
+        <select name="role">
+          {% for role in roles %}<option value="{{ role }}">{{ role_labels.get(role, role) }}</option>{% endfor %}
+        </select>
+      </div>
+      <div><label><input type="checkbox" name="active" checked> Активен</label></div>
+      <div><button type="submit">Создать</button></div>
+    </form>
+  </div>
+</dialog>
+
 <div class="card table-wrap">
   <table>
-    <thead><tr><th>ID</th><th>Логин</th><th>ФИО</th><th>Подразделение</th><th>Должность</th><th>Роль</th><th>Статус</th></tr></thead>
+    <thead><tr><th>ID</th><th>Логин</th><th>ФИО</th><th>Подразделение</th><th>Должность</th><th>Роль</th><th>Статус</th><th>Действия</th></tr></thead>
     <tbody>
       {% for item in users %}
       <tr>
@@ -44,6 +55,53 @@
         <td>{{ item.position_item.label if item.position_item else (item.position or '') }}</td>
         <td>{{ role_labels.get(item.role, item.role) }}</td>
         <td>{{ "Активен" if item.is_active else "Заблокирован" }}</td>
+        <td class="actions">
+          <button type="button" class="secondary" onclick="document.getElementById('editUserModal{{ item.id }}').showModal()">Редактировать</button>
+          <dialog id="editUserModal{{ item.id }}" class="modal">
+            <div class="modal-body">
+              <div class="modal-header">
+                <h3>Редактировать: {{ item.login }}</h3>
+                <form method="dialog"><button type="submit" class="secondary">Закрыть</button></form>
+              </div>
+              <form method="post" action="/users/{{ item.id }}/profile" class="grid">
+                <div><label>ФИО</label><input name="full_name" value="{{ item.full_name or '' }}"></div>
+                <div>
+                  <label>Подразделение</label>
+                  <select name="department_id_raw">
+                    <option value="">-</option>
+                    {% for d in department_items %}
+                    <option value="{{ d.id }}" {% if item.department_item_id==d.id %}selected{% endif %}>{{ d.label }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div>
+                  <label>Должность</label>
+                  <select name="position_id_raw">
+                    <option value="">-</option>
+                    {% for p in position_items %}
+                    <option value="{{ p.id }}" {% if item.position_item_id==p.id %}selected{% endif %}>{{ p.label }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div><button type="submit" class="secondary">Сохранить профиль</button></div>
+              </form>
+
+              <form method="post" action="/users/{{ item.id }}/role" class="grid" style="margin-top:10px;">
+                <div>
+                  <label>Роль</label>
+                  <select name="role">
+                    {% for role in roles %}<option value="{{ role }}" {% if role==item.role %}selected{% endif %}>{{ role_labels.get(role, role) }}</option>{% endfor %}
+                  </select>
+                </div>
+                <div><button type="submit">Сохранить роль</button></div>
+              </form>
+
+              <form method="post" action="/users/{{ item.id }}/toggle" style="margin-top:10px;" onsubmit="return confirm('Изменить статус пользователя?');">
+                <button type="submit" class="warn">{{ 'Блокировать' if item.is_active else 'Разблокировать' }}</button>
+              </form>
+            </div>
+          </dialog>
+        </td>
       </tr>
       {% endfor %}
     </tbody>

@@ -2,7 +2,7 @@
 {% block content %}
 <h1>Атрибуты</h1>
 <div class="card">
-  <form method="get" action="/attributes" class="grid">
+  <form method="get" action="/attributes" class="grid js-live-filter">
     <div><label>Поиск (код/наименование)</label><input name="q" value="{{ q }}"></div>
     <div>
       <label>Тип</label>
@@ -12,7 +12,7 @@
       </select>
     </div>
     <div><label>&nbsp;</label><button type="submit" class="secondary">Фильтр</button></div>
-    <div><label>&nbsp;</label><button type="submit" formaction="/attributes" formmethod="get" class="secondary">Сбросить фильтр</button></div>
+    <div><label>&nbsp;</label><a href="/attributes" class="btn secondary">Сбросить фильтр</a></div>
   </form>
 </div>
 

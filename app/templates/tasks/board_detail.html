@@ -4,6 +4,10 @@
 <div class="card">
   <p><b>Код:</b> {{ board.code }}</p>
   <p>{{ board.description or '' }}</p>
+  <p class="muted">Доска работает как представление задач по фильтрам, задачи принадлежат очередям.</p>
+  {% if board.filter_queue %}
+  <p class="muted"><a href="/queues/{{ board.filter_queue.id }}">Связанная очередь: {{ board.filter_queue.name }}</a></p>
+  {% endif %}
   {% if can_manage %}
   <div class="modal-actions">
     <button type="button" onclick="document.getElementById('editBoardModal').showModal()">Редактировать</button>
@@ -17,6 +21,7 @@
       <form method="post" action="/boards/{{ board.id }}/update" class="grid">
         <div><label>Название</label><input name="name" value="{{ board.name }}" required></div>
         <div><label>Описание</label><input name="description" value="{{ board.description or '' }}"></div>
+        <div><label>Очередь по умолчанию</label><select name="filter_queue_id_raw"><option value="">Все очереди</option>{% for qx in queues %}<option value="{{ qx.id }}" {% if board.filter_queue_id==qx.id %}selected{% endif %}>{{ qx.name }}</option>{% endfor %}</select></div>
         <div><label><input type="checkbox" name="active" {% if board.is_active %}checked{% endif %}> Активна</label></div>
         <div><button type="submit">Сохранить</button></div>
       </form>
@@ -26,8 +31,21 @@
   <p><a href="/boards/{{ board.id }}/kanban">Открыть канбан-представление</a></p>
 </div>
 
+<div class="card">
+  <form method="get" action="/boards/{{ board.id }}" class="grid js-live-filter">
+    <div><label>Быстрый поиск</label><input name="q" value="{{ q or '' }}"></div>
+    <div><label>Очередь</label><select name="queue_id_raw"><option value="">Все</option>{% for qx in queues %}<option value="{{ qx.id }}" {% if selected_queue_id==qx.id %}selected{% endif %}>{{ qx.name }}</option>{% endfor %}</select></div>
+    <div><label>Статус</label><select name="status"><option value="">Все</option>{% for s in status_order %}<option value="{{ s }}" {% if selected_status==s %}selected{% endif %}>{{ task_status_labels.get(s, s) }}</option>{% endfor %}</select></div>
+    <div><label>Приоритет</label><select name="priority"><option value="">Все</option>{% for p in priorities %}<option value="{{ p }}" {% if selected_priority==p %}selected{% endif %}>{{ task_priority_labels.get(p, p) }}</option>{% endfor %}</select></div>
+    <div><label>Исполнитель</label><select name="assignee_id_raw"><option value="">Все</option>{% for u in users %}<option value="{{ u.id }}" {% if selected_assignee_id==u.id %}selected{% endif %}>{{ u.login }}</option>{% endfor %}</select></div>
+    <div><label>Коллекция</label><select name="collection_id_raw"><option value="">Все</option>{% for c in collections %}<option value="{{ c.id }}" {% if selected_collection_id==c.id %}selected{% endif %}>{{ c.code }} - {{ c.name }}</option>{% endfor %}</select></div>
+    <div><label>Изделие</label><select name="product_id_raw"><option value="">Все</option>{% for p in products %}<option value="{{ p.id }}" {% if selected_product_id==p.id %}selected{% endif %}>{{ p.sku }} - {{ p.name }}</option>{% endfor %}</select></div>
+    <div><label>&nbsp;</label><a href="/boards/{{ board.id }}" class="btn secondary">Сбросить фильтр</a></div>
+  </form>
+</div>
+
 <div class="card table-wrap">
-  <h3>Задачи доски</h3>
+  <h3>Задачи в представлении доски</h3>
   <table>
     <thead><tr><th>ID</th><th>Название</th><th>Статус</th><th>Приоритет</th><th>Очередь</th><th>Исполнитель</th></tr></thead>
     <tbody>

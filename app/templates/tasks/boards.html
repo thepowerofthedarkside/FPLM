@@ -14,6 +14,13 @@
     <form method="post" action="/boards" class="grid">
       <div><label>Название</label><input name="name" required></div>
       <div><label>Описание</label><input name="description"></div>
+      <div>
+        <label>Очередь по умолчанию</label>
+        <select name="filter_queue_id_raw">
+          <option value="">Все очереди</option>
+          {% for q in queues %}<option value="{{ q.id }}">{{ q.name }}</option>{% endfor %}
+        </select>
+      </div>
       <div><label><input type="checkbox" name="active" checked> Активна</label></div>
       <div><button type="submit">Создать</button></div>
     </form>
@@ -23,13 +30,14 @@
 
 <div class="card table-wrap">
   <table>
-    <thead><tr><th>Код</th><th>Название</th><th>Описание</th><th>Статус</th><th>Канбан</th></tr></thead>
+    <thead><tr><th>Код</th><th>Название</th><th>Описание</th><th>Очередь по умолчанию</th><th>Статус</th><th>Канбан</th></tr></thead>
     <tbody>
       {% for b in boards %}
       <tr>
         <td>{{ b.code }}</td>
         <td><a href="/boards/{{ b.id }}">{{ b.name }}</a></td>
         <td>{{ b.description or '' }}</td>
+        <td>{{ b.filter_queue.name if b.filter_queue else 'Все очереди' }}</td>
         <td>{{ 'Активна' if b.is_active else 'Неактивна' }}</td>
         <td><a href="/boards/{{ b.id }}/kanban">Канбан</a></td>
       </tr>

@@ -3,7 +3,7 @@
 <h1>Изделия</h1>
 
 <div class="card">
-  <form method="get" action="/products" class="grid products-filter-row" id="productsFilterForm">
+  <form method="get" action="/products" class="grid products-filter-row js-live-filter" id="productsFilterForm">
     <div><label>Поиск изделий</label><input id="productsLiveSearch" name="q" value="{{ q }}" placeholder="SKU или название" autocomplete="off"></div>
     <div>
       <label>Статус</label>
@@ -34,8 +34,7 @@
         <option value="name_asc" {% if sort=='name_asc' %}selected{% endif %}>По названию</option>
       </select>
     </div>
-    <div><label>&nbsp;</label><button type="submit" class="secondary">Применить</button></div>
-    <div><label>&nbsp;</label><button type="submit" formaction="/products" formmethod="get" class="secondary">Сбросить фильтр</button></div>
+<div><label>&nbsp;</label><a href="/products" class="btn secondary">Сбросить фильтр</a></div>
   </form>
 </div>
 
@@ -92,21 +91,4 @@
   </a>
   {% endfor %}
 </div>
-<script>
-  (() => {
-    const input = document.getElementById("productsLiveSearch");
-    const cards = Array.from(document.querySelectorAll("#productGrid .product-card-link"));
-    if (!input || cards.length === 0) return;
-    const normalize = (s) => (s || "").toLocaleLowerCase("ru-RU").trim();
-    const applyFilter = () => {
-      const q = normalize(input.value);
-      cards.forEach((card) => {
-        const haystack = normalize(card.dataset.search || "");
-        card.style.display = !q || haystack.includes(q) ? "" : "none";
-      });
-    };
-    input.addEventListener("input", applyFilter);
-    applyFilter();
-  })();
-</script>
 {% endblock %}

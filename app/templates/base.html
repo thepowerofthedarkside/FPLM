@@ -36,5 +36,58 @@
     {% endif %}
     {% block content %}{% endblock %}
   </main>
+  <script>
+    (() => {
+      const DEBOUNCE_MS = 300;
+      const forms = Array.from(document.querySelectorAll("form.js-live-filter[method='get']"));
+      if (!forms.length) return;
+
+      const submitForm = (form) => {
+        if (!form || form.dataset.liveSubmitting === "1") return;
+        form.dataset.liveSubmitting = "1";
+        const active = document.activeElement;
+        const name = active && active.name ? active.name : "";
+        const value = active && "value" in active ? active.value : "";
+        if (name) {
+          sessionStorage.setItem("live_focus_name", name);
+          sessionStorage.setItem("live_focus_value", value);
+        }
+        form.requestSubmit();
+      };
+
+      forms.forEach((form) => {
+        let timer = 0;
+        const textInputs = Array.from(
+          form.querySelectorAll("input[name='q'], input[type='search'], input[type='text']")
+        ).filter((el) => !el.disabled && !el.readOnly);
+        const selects = Array.from(form.querySelectorAll("select[name]")).filter((el) => !el.disabled);
+
+        textInputs.forEach((el) => {
+          el.addEventListener("input", () => {
+            if (timer) window.clearTimeout(timer);
+            timer = window.setTimeout(() => submitForm(form), DEBOUNCE_MS);
+          });
+        });
+        selects.forEach((el) => {
+          el.addEventListener("change", () => submitForm(form));
+        });
+      });
+
+      const focusName = sessionStorage.getItem("live_focus_name");
+      const focusValue = sessionStorage.getItem("live_focus_value");
+      if (focusName) {
+        const target = document.querySelector(`form.js-live-filter [name="${focusName}"]`);
+        if (target && "value" in target) {
+          target.focus();
+          if (typeof target.setSelectionRange === "function" && typeof focusValue === "string") {
+            const pos = focusValue.length;
+            target.setSelectionRange(pos, pos);
+          }
+        }
+      }
+      sessionStorage.removeItem("live_focus_name");
+      sessionStorage.removeItem("live_focus_value");
+    })();
+  </script>
 </body>
 </html>

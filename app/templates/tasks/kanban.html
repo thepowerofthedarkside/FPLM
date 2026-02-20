@@ -2,8 +2,11 @@
 {% block content %}
 <h1>Канбан: {{ board.name }}</h1>
 <p class="muted">Перетащите карточку задачи в нужную колонку для смены статуса.</p>
+{% if board.filter_queue %}
+<p class="muted"><a href="/queues/{{ board.filter_queue.id }}">Связанная очередь: {{ board.filter_queue.name }}</a></p>
+{% endif %}
 <div class="modal-actions">
-  <form method="get" action="/boards/{{ board.id }}/kanban" class="inline">
+  <form method="get" action="/boards/{{ board.id }}/kanban" class="inline js-live-filter">
     <input name="q" value="{{ q or '' }}" placeholder="Быстрый поиск по атрибутам задач">
     <button type="submit" class="secondary">Поиск</button>
   </form>
@@ -18,15 +21,15 @@
       <h3>Фильтр по атрибутам задач</h3>
       <form method="dialog"><button type="submit" class="secondary">Закрыть</button></form>
     </div>
-    <form method="get" action="/boards/{{ board.id }}/kanban" class="grid">
+    <form method="get" action="/boards/{{ board.id }}/kanban" class="grid js-live-filter">
       <div><label>Быстрый поиск</label><input name="q" value="{{ q or '' }}"></div>
+      <div><label>Очередь</label><select name="queue_id_raw"><option value="">Все</option>{% for qx in queues %}<option value="{{ qx.id }}" {% if selected_queue_id==qx.id %}selected{% endif %}>{{ qx.name }}</option>{% endfor %}</select></div>
       <div><label>Статус</label><select name="status_filter"><option value="">Все</option>{% for s in status_order %}<option value="{{ s }}" {% if selected_status==s %}selected{% endif %}>{{ task_status_labels.get(s, s) }}</option>{% endfor %}</select></div>
       <div><label>Приоритет</label><select name="priority"><option value="">Все</option>{% for p in priorities %}<option value="{{ p }}" {% if selected_priority==p %}selected{% endif %}>{{ task_priority_labels.get(p, p) }}</option>{% endfor %}</select></div>
       <div><label>Исполнитель</label><select name="assignee_id_raw"><option value="">Все</option>{% for u in users %}<option value="{{ u.id }}" {% if selected_assignee_id==u.id %}selected{% endif %}>{{ u.login }}</option>{% endfor %}</select></div>
       <div><label>Коллекция</label><select name="collection_id_raw"><option value="">Все</option>{% for c in collections %}<option value="{{ c.id }}" {% if selected_collection_id==c.id %}selected{% endif %}>{{ c.code }} - {{ c.name }}</option>{% endfor %}</select></div>
       <div><label>Изделие</label><select name="product_id_raw"><option value="">Все</option>{% for p in products %}<option value="{{ p.id }}" {% if selected_product_id==p.id %}selected{% endif %}>{{ p.sku }} - {{ p.name }}</option>{% endfor %}</select></div>
-      <div><button type="submit">Применить фильтр</button></div>
-      <div><button type="submit" formaction="/boards/{{ board.id }}/kanban" formmethod="get" class="secondary">Сбросить фильтр</button></div>
+      <div><a href="/boards/{{ board.id }}/kanban" class="btn secondary">Сбросить фильтр</a></div>
     </form>
   </div>
 </dialog>
@@ -49,11 +52,15 @@
       <div><label>Начало</label><input type="date" name="start_date"></div>
       <div><label>Конец</label><input type="date" name="end_date"></div>
       <div><label>Дедлайн</label><input type="date" name="deadline"></div>
-      <div><label>Очередь</label><select name="queue_id_raw" required><option value="">-</option>{% for q in queues %}<option value="{{ q.id }}">{{ q.name }}</option>{% endfor %}</select></div>
+      {% if selected_queue_id %}
+      <div><label>Очередь</label><input value="{% for qx in queues %}{% if qx.id==selected_queue_id %}{{ qx.name }}{% endif %}{% endfor %}" disabled></div>
+      <input type="hidden" name="queue_id_raw" value="{{ selected_queue_id }}">
+      {% else %}
+      <div><label>Очередь</label><select name="queue_id_raw" required><option value="">-</option>{% for qx in queues %}<option value="{{ qx.id }}">{{ qx.name }}</option>{% endfor %}</select></div>
+      {% endif %}
       <div><label>Исполнитель</label><select name="assignee_id_raw"><option value="">-</option>{% for u in users %}<option value="{{ u.id }}">{{ u.login }}</option>{% endfor %}</select></div>
       <div><label>Коллекция</label><select name="collection_id_raw"><option value="">-</option>{% for c in collections %}<option value="{{ c.id }}">{{ c.code }} - {{ c.name }}</option>{% endfor %}</select></div>
       <div><label>Изделие</label><select name="product_id_raw"><option value="">-</option>{% for p in products %}<option value="{{ p.id }}">{{ p.sku }} - {{ p.name }}</option>{% endfor %}</select></div>
-      <input type="hidden" name="board_id_raw" value="{{ board.id }}">
       <div style="grid-column:1/-1;"><label>Комментарий</label><textarea name="comment"></textarea></div>
       <div><button type="submit">Создать</button></div>
     </form>
@@ -73,6 +80,7 @@
         <div class="small muted">Автор: {{ task.author.login if task.author else 'не указан' }}</div>
         <div class="small muted">Исполнитель: {{ task.assignee.login if task.assignee else 'не назначен' }}</div>
         <div class="small muted">Дедлайн: {{ task.deadline.isoformat() if task.deadline else 'не задан' }}</div>
+        <div class="small muted">Очередь: {{ task.queue.name if task.queue else 'не указана' }}</div>
         <div class="small muted">Коллекция: {{ (task.collection.code ~ ' - ' ~ task.collection.name) if task.collection else 'не указана' }}</div>
         <div class="small muted">Изделие: {{ (task.product.sku ~ ' - ' ~ task.product.name) if task.product else 'не указано' }}</div>
       </article>

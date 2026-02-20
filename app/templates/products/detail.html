@@ -24,7 +24,11 @@
     {% if can_manage %}
     <div class="hero-actions">
       <button type="button" class="primary" onclick="document.getElementById('editProductModal').showModal()">Редактировать</button>
+      {% if product.status == 'archived' %}
+      <form method="post" action="/products/{{ product.id }}/unarchive" class="inline" onsubmit="return confirm('Убрать изделие из архива?');"><button type="submit" class="secondary">Убрать из архива</button></form>
+      {% else %}
       <form method="post" action="/products/{{ product.id }}/archive" class="inline" onsubmit="return confirm('Архивировать изделие?');"><button type="submit" class="warn">Архивировать</button></form>
+      {% endif %}
     </div>
     <dialog id="editProductModal" class="modal">
       <div class="modal-body">

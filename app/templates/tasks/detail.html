@@ -41,11 +41,7 @@
           <label>Очередь</label>
           <select name="queue_id_raw"><option value="">-</option>{% for q in queues %}<option value="{{ q.id }}" {% if task.queue_id==q.id %}selected{% endif %}>{{ q.name }}</option>{% endfor %}</select>
         </div>
-        <div>
-          <label>Доска</label>
-          <select name="board_id_raw"><option value="">-</option>{% for b in boards %}<option value="{{ b.id }}" {% if task.board_id==b.id %}selected{% endif %}>{{ b.name }}</option>{% endfor %}</select>
-        </div>
-        <div>
+<div>
           <label>Коллекция</label>
           <select name="collection_id_raw"><option value="">-</option>{% for c in collections %}<option value="{{ c.id }}" {% if task.collection_id==c.id %}selected{% endif %}>{{ c.code }} - {{ c.name }}</option>{% endfor %}</select>
         </div>

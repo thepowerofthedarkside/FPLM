@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from datetime import datetime
 from io import BytesIO
@@ -129,6 +129,7 @@ def _apply_task_filters(
     q: str,
     status: str,
     priority: str,
+    queue_id: int | None,
     assignee_id: int | None,
     collection_id: int | None,
     product_id: int | None,
@@ -155,6 +156,8 @@ def _apply_task_filters(
         stmt = stmt.where(Task.status == status)
     if priority and priority in TASK_PRIORITIES:
         stmt = stmt.where(Task.priority == priority)
+    if queue_id:
+        stmt = stmt.where(Task.queue_id == queue_id)
     if assignee_id:
         stmt = stmt.where(Task.assignee_id == assignee_id)
     if collection_id:
@@ -162,6 +165,15 @@ def _apply_task_filters(
     if product_id:
         stmt = stmt.where(Task.product_id == product_id)
     return stmt
+
+
+@app.middleware("http")
+async def force_utf8_html(request: Request, call_next):
+    response = await call_next(request)
+    content_type = response.headers.get("content-type", "")
+    if content_type.startswith("text/html"):
+        response.headers["content-type"] = "text/html; charset=utf-8"
+    return response
 
 
 def _set_flash(request: Request, message: str, level: str = "info") -> None:
@@ -253,6 +265,14 @@ def _ensure_user_columns() -> None:
             conn.exec_driver_sql("ALTER TABLE users ADD COLUMN department_item_id INTEGER")
         if "position_item_id" not in columns:
             conn.exec_driver_sql("ALTER TABLE users ADD COLUMN position_item_id INTEGER")
+
+
+def _ensure_board_columns() -> None:
+    with engine.begin() as conn:
+        rows = conn.exec_driver_sql("PRAGMA table_info(task_boards)").fetchall()
+        columns = {row[1] for row in rows}
+        if "filter_queue_id" not in columns:
+            conn.exec_driver_sql("ALTER TABLE task_boards ADD COLUMN filter_queue_id INTEGER")
 
 
 def _get_dictionary_items(db: Session, code: str) -> tuple[Dictionary | None, list[DictionaryItem]]:
@@ -391,6 +411,7 @@ def bootstrap_data() -> None:
     Base.metadata.create_all(bind=engine)
     _ensure_user_columns()
     _ensure_product_columns()
+    _ensure_board_columns()
     _ensure_uploads_dir()
     db = SessionLocal()
     try:
@@ -890,6 +911,12 @@ def queue_detail_page(
     if not queue:
         _set_flash(request, "Очередь не найдена", "error")
         return _redirect("/queues")
+    related_board = db.scalar(
+        select(TaskBoard)
+        .where(TaskBoard.filter_queue_id == queue.id, TaskBoard.is_active.is_(True))
+        .order_by(TaskBoard.name.asc())
+        .limit(1)
+    )
 
     assignee_id = int(assignee_id_raw) if assignee_id_raw.strip().isdigit() else None
     collection_id = int(collection_id_raw) if collection_id_raw.strip().isdigit() else None
@@ -900,17 +927,15 @@ def queue_detail_page(
         .options(
             joinedload(Task.author),
             joinedload(Task.assignee),
-            joinedload(Task.board),
             joinedload(Task.collection),
             joinedload(Task.product),
         )
         .where(Task.queue_id == queue_id)
     )
-    stmt = _apply_task_filters(stmt, q, status, priority, assignee_id, collection_id, product_id).order_by(
+    stmt = _apply_task_filters(stmt, q, status, priority, None, assignee_id, collection_id, product_id).order_by(
         Task.created_at.desc()
     )
     tasks = list(db.scalars(stmt).all())
-    boards = list(db.scalars(select(TaskBoard).where(TaskBoard.is_active.is_(True)).order_by(TaskBoard.name.asc())).all())
     users = list(db.scalars(select(User).where(User.is_active.is_(True)).order_by(User.login.asc())).all())
     products = list(db.scalars(select(Product).order_by(Product.name.asc())).all())
     collections = list(db.scalars(select(Collection).where(Collection.is_active.is_(True)).order_by(Collection.year.desc())).all())
@@ -921,8 +946,8 @@ def queue_detail_page(
         {
             "title": f"Очередь: {queue.name}",
             "queue": queue,
+            "related_board": related_board,
             "tasks": tasks,
-            "boards": boards,
             "users": users,
             "products": products,
             "collections": collections,
@@ -1003,13 +1028,15 @@ def boards_page(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    boards = list(db.scalars(select(TaskBoard).order_by(TaskBoard.name.asc())).all())
+    boards = list(db.scalars(select(TaskBoard).options(joinedload(TaskBoard.filter_queue)).order_by(TaskBoard.name.asc())).all())
+    queues = list(db.scalars(select(TaskQueue).where(TaskQueue.is_active.is_(True)).order_by(TaskQueue.name.asc())).all())
     return _render(
         request,
         "tasks/boards.html",
         {
             "title": "Доски задач",
             "boards": boards,
+            "queues": queues,
             "can_manage": user.role in {"admin", "content-manager"},
             "user": user,
         },
@@ -1020,21 +1047,40 @@ def boards_page(
 def board_detail_page(
     board_id: int,
     request: Request,
+    q: str = "",
+    status: str = "",
+    priority: str = "",
+    queue_id_raw: str = "",
+    assignee_id_raw: str = "",
+    collection_id_raw: str = "",
+    product_id_raw: str = "",
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    board = db.get(TaskBoard, board_id)
+    board = db.scalar(select(TaskBoard).options(joinedload(TaskBoard.filter_queue)).where(TaskBoard.id == board_id))
     if not board:
         _set_flash(request, "Доска не найдена", "error")
         return _redirect("/boards")
-    tasks = list(
-        db.scalars(
-            select(Task)
-            .options(joinedload(Task.assignee), joinedload(Task.queue))
-            .where(Task.board_id == board_id)
-            .order_by(Task.created_at.desc())
-        ).all()
+    queue_id = int(queue_id_raw) if queue_id_raw.strip().isdigit() else board.filter_queue_id
+    assignee_id = int(assignee_id_raw) if assignee_id_raw.strip().isdigit() else None
+    collection_id = int(collection_id_raw) if collection_id_raw.strip().isdigit() else None
+    product_id = int(product_id_raw) if product_id_raw.strip().isdigit() else None
+
+    stmt = select(Task).options(
+        joinedload(Task.author),
+        joinedload(Task.assignee),
+        joinedload(Task.queue),
+        joinedload(Task.collection),
+        joinedload(Task.product),
     )
+    stmt = _apply_task_filters(stmt, q, status, priority, queue_id, assignee_id, collection_id, product_id).order_by(
+        Task.created_at.desc()
+    )
+    tasks = list(db.scalars(stmt).all())
+    queues = list(db.scalars(select(TaskQueue).where(TaskQueue.is_active.is_(True)).order_by(TaskQueue.name.asc())).all())
+    users = list(db.scalars(select(User).where(User.is_active.is_(True)).order_by(User.login.asc())).all())
+    products = list(db.scalars(select(Product).order_by(Product.name.asc())).all())
+    collections = list(db.scalars(select(Collection).where(Collection.is_active.is_(True)).order_by(Collection.year.desc())).all())
     return _render(
         request,
         "tasks/board_detail.html",
@@ -1042,6 +1088,19 @@ def board_detail_page(
             "title": f"Доска: {board.name}",
             "board": board,
             "tasks": tasks,
+            "queues": queues,
+            "users": users,
+            "products": products,
+            "collections": collections,
+            "status_order": TASK_STATUS_ORDER,
+            "priorities": TASK_PRIORITIES,
+            "q": q,
+            "selected_status": status,
+            "selected_priority": priority,
+            "selected_queue_id": queue_id,
+            "selected_assignee_id": assignee_id,
+            "selected_collection_id": collection_id,
+            "selected_product_id": product_id,
             "can_manage": user.role in {"admin", "content-manager"},
             "user": user,
         },
@@ -1053,11 +1112,16 @@ def create_board(
     request: Request,
     name: str = Form(...),
     description: str = Form(""),
+    filter_queue_id_raw: str = Form(""),
     active: str | None = Form(None),
     _: User = Depends(require_roles("admin", "content-manager")),
     db: Session = Depends(get_db),
 ):
     created = False
+    filter_queue_id = int(filter_queue_id_raw) if filter_queue_id_raw.strip().isdigit() else None
+    if filter_queue_id is not None and not db.get(TaskQueue, filter_queue_id):
+        _set_flash(request, "Некорректная очередь для фильтра доски", "error")
+        return _redirect("/boards")
     for _ in range(5):
         existing_codes = list(db.scalars(select(TaskBoard.code)).all())
         next_code = _next_auto_code(existing_codes, "K")
@@ -1066,6 +1130,7 @@ def create_board(
                 code=next_code,
                 name=name.strip(),
                 description=description.strip() or None,
+                filter_queue_id=filter_queue_id,
                 is_active=active is not None,
             )
         )
@@ -1087,14 +1152,20 @@ def update_board(
     request: Request,
     name: str = Form(...),
     description: str = Form(""),
+    filter_queue_id_raw: str = Form(""),
     active: str | None = Form(None),
     _: User = Depends(require_roles("admin", "content-manager")),
     db: Session = Depends(get_db),
 ):
-    board = db.get(TaskBoard, board_id)
+    board = db.scalar(select(TaskBoard).options(joinedload(TaskBoard.filter_queue)).where(TaskBoard.id == board_id))
     if board:
+        filter_queue_id = int(filter_queue_id_raw) if filter_queue_id_raw.strip().isdigit() else None
+        if filter_queue_id is not None and not db.get(TaskQueue, filter_queue_id):
+            _set_flash(request, "Некорректная очередь для фильтра доски", "error")
+            return _redirect(f"/boards/{board_id}")
         board.name = name.strip()
         board.description = description.strip() or None
+        board.filter_queue_id = filter_queue_id
         board.is_active = active is not None
         try:
             db.commit()
@@ -1112,17 +1183,19 @@ def board_kanban(
     q: str = "",
     status_filter: str = "",
     priority: str = "",
+    queue_id_raw: str = "",
     assignee_id_raw: str = "",
     collection_id_raw: str = "",
     product_id_raw: str = "",
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    board = db.get(TaskBoard, board_id)
+    board = db.scalar(select(TaskBoard).options(joinedload(TaskBoard.filter_queue)).where(TaskBoard.id == board_id))
     if not board:
         _set_flash(request, "Доска не найдена", "error")
         return _redirect("/boards")
 
+    queue_id = int(queue_id_raw) if queue_id_raw.strip().isdigit() else board.filter_queue_id
     assignee_id = int(assignee_id_raw) if assignee_id_raw.strip().isdigit() else None
     collection_id = int(collection_id_raw) if collection_id_raw.strip().isdigit() else None
     product_id = int(product_id_raw) if product_id_raw.strip().isdigit() else None
@@ -1136,9 +1209,8 @@ def board_kanban(
             joinedload(Task.collection),
             joinedload(Task.queue),
         )
-        .where(Task.board_id == board_id)
     )
-    stmt = _apply_task_filters(stmt, q, status_filter, priority, assignee_id, collection_id, product_id).order_by(
+    stmt = _apply_task_filters(stmt, q, status_filter, priority, queue_id, assignee_id, collection_id, product_id).order_by(
         Task.priority.desc(), Task.created_at.desc()
     )
     tasks = list(db.scalars(stmt).all())
@@ -1166,6 +1238,7 @@ def board_kanban(
             "q": q,
             "selected_status": status_filter,
             "selected_priority": priority,
+            "selected_queue_id": queue_id,
             "selected_assignee_id": assignee_id,
             "selected_collection_id": collection_id,
             "selected_product_id": product_id,
@@ -1196,7 +1269,6 @@ def create_task(
     deadline: str = Form(""),
     assignee_id_raw: str = Form(""),
     queue_id_raw: str = Form(""),
-    board_id_raw: str = Form(""),
     collection_id_raw: str = Form(""),
     product_id_raw: str = Form(""),
     user: User = Depends(require_roles("admin", "content-manager")),
@@ -1228,7 +1300,7 @@ def create_task(
             author_id=user.id,
             assignee_id=parse_int(assignee_id_raw),
             queue_id=parse_int(queue_id_raw),
-            board_id=parse_int(board_id_raw),
+            board_id=None,
             collection_id=parse_int(collection_id_raw),
             product_id=parse_int(product_id_raw),
         )
@@ -1258,7 +1330,6 @@ def task_detail(
         .options(
             joinedload(Task.author),
             joinedload(Task.assignee),
-            joinedload(Task.board),
             joinedload(Task.queue),
             joinedload(Task.product),
             joinedload(Task.collection),
@@ -1270,7 +1341,6 @@ def task_detail(
         _set_flash(request, "Задача не найдена", "error")
         return _redirect("/tasks")
 
-    boards = list(db.scalars(select(TaskBoard).where(TaskBoard.is_active.is_(True)).order_by(TaskBoard.name.asc())).all())
     queues = list(db.scalars(select(TaskQueue).where(TaskQueue.is_active.is_(True)).order_by(TaskQueue.name.asc())).all())
     users = list(db.scalars(select(User).where(User.is_active.is_(True)).order_by(User.login.asc())).all())
     products = list(db.scalars(select(Product).order_by(Product.name.asc())).all())
@@ -1282,7 +1352,6 @@ def task_detail(
         {
             "title": f"Задача: {task.title}",
             "task": task,
-            "boards": boards,
             "queues": queues,
             "users": users,
             "products": products,
@@ -1309,7 +1378,6 @@ def update_task(
     deadline: str = Form(""),
     assignee_id_raw: str = Form(""),
     queue_id_raw: str = Form(""),
-    board_id_raw: str = Form(""),
     collection_id_raw: str = Form(""),
     product_id_raw: str = Form(""),
     _: User = Depends(require_roles("admin", "content-manager")),
@@ -1339,11 +1407,15 @@ def update_task(
         task.deadline = parse_date(deadline)
         task.assignee_id = parse_int(assignee_id_raw)
         task.queue_id = parse_int(queue_id_raw)
-        task.board_id = parse_int(board_id_raw)
+        task.board_id = None
         task.collection_id = parse_int(collection_id_raw)
         task.product_id = parse_int(product_id_raw)
     except ValueError:
         _set_flash(request, "Проверьте даты задачи (формат YYYY-MM-DD)", "error")
+        return _redirect(f"/tasks/{task_id}")
+
+    if task.queue_id is None:
+        _set_flash(request, "Задача должна принадлежать очереди", "error")
         return _redirect(f"/tasks/{task_id}")
 
     db.commit()
@@ -2617,8 +2689,32 @@ def archive_product(
     if product:
         product.status = "archived"
         product.updated_by = user.id
+        product.updated_at = datetime.utcnow()
         db.commit()
         _set_flash(request, "Изделие архивировано", "success")
+    return _redirect(f"/products/{product_id}")
+
+
+@app.post("/products/{product_id}/unarchive")
+def unarchive_product(
+    product_id: int,
+    request: Request,
+    user: User = Depends(require_roles("admin", "content-manager")),
+    db: Session = Depends(get_db),
+):
+    product = db.get(Product, product_id)
+    if not product:
+        return _redirect("/products")
+
+    completeness_errors = validate_product_completeness(db, product)
+    product.status = "active" if not completeness_errors else "draft"
+    product.updated_by = user.id
+    product.updated_at = datetime.utcnow()
+    db.commit()
+    if product.status == "active":
+        _set_flash(request, "Изделие убрано из архива и активировано", "success")
+    else:
+        _set_flash(request, "Изделие убрано из архива и переведено в черновик", "success")
     return _redirect(f"/products/{product_id}")
 
 
