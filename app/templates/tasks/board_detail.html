@@ -11,7 +11,10 @@
   {% if can_manage %}
   <div class="modal-actions">
     <button type="button" onclick="document.getElementById('editBoardModal').showModal()">Редактировать</button>
-  </div>
+
+    <form method="post" action="/boards/{{ board.id }}/delete" class="inline" onsubmit="return confirm('Удалить доску?');">
+      <button type="submit" class="warn">Удалить</button>
+    </form>  </div>
   <dialog id="editBoardModal" class="modal">
     <div class="modal-body">
       <div class="modal-header">

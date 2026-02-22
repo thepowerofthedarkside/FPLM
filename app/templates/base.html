@@ -34,6 +34,18 @@
     {% if flash %}
       <div class="flash {{ flash.level }}">{{ flash.message }}</div>
     {% endif %}
+    {% if user and breadcrumbs %}
+      <nav class="breadcrumbs" aria-label="Хлебные крошки">
+        {% for crumb in breadcrumbs %}
+          {% if crumb.url and not loop.last %}
+            <a href="{{ crumb.url }}">{{ crumb.label }}</a>
+          {% else %}
+            <span class="{% if loop.last %}current{% endif %}">{{ crumb.label }}</span>
+          {% endif %}
+          {% if not loop.last %}<span class="sep">/</span>{% endif %}
+        {% endfor %}
+      </nav>
+    {% endif %}
     {% block content %}{% endblock %}
   </main>
   <script>

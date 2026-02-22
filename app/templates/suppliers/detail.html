@@ -8,7 +8,10 @@
   {% if can_manage %}
   <div class="modal-actions">
     <button type="button" onclick="document.getElementById('editSupplierModal').showModal()">Редактировать</button>
-  </div>
+
+    <form method="post" action="/suppliers/{{ supplier.id }}/delete" class="inline" onsubmit="return confirm('Удалить поставщика?');">
+      <button type="submit" class="warn">Удалить</button>
+    </form>  </div>
   <dialog id="editSupplierModal" class="modal">
     <div class="modal-body">
       <div class="modal-header">

@@ -3,20 +3,31 @@
 <h1>Редактирование значения</h1>
 <div class="card">
   <p><b>Атрибут:</b> {{ assignment.attribute.code }} - {{ assignment.attribute.name }}</p>
-  <p><b>Тип:</b> {{ data_type_labels.get(assignment.attribute.data_type, assignment.attribute.data_type) }}; <b>Множественный:</b> {{ "Да" if assignment.attribute.is_multivalue else "Нет" }}</p>
+  <p><b>Тип:</b> {{ data_type_labels.get(assignment.attribute.data_type, assignment.attribute.data_type) }}; <b>Обязательный:</b> {{ "Да" if assignment.attribute.is_required else "Нет" }}; <b>Множественный:</b> {{ "Да" if assignment.attribute.is_multivalue else "Нет" }}</p>
 
   {% if can_manage %}
   <form method="post" action="/products/{{ assignment.product_id }}/attributes/{{ assignment.id }}/update">
+    {% set first_value = get_value_view(assignment.values[0], assignment.attribute.data_type) if assignment.values else '' %}
     {% if assignment.attribute.data_type in ['string', 'number', 'date'] %}
-      <label>Значение{% if assignment.attribute.is_multivalue %} (по одному в строке){% endif %}</label>
+      <label>Значение{% if assignment.attribute.is_required %}*{% endif %}{% if assignment.attribute.is_multivalue %} (по одному в строке){% endif %}</label>
+      {% if assignment.attribute.is_multivalue %}
       <textarea name="value_text">{% for v in assignment.values %}{{ get_value_view(v, assignment.attribute.data_type) }}
 {% endfor %}</textarea>
+      {% else %}
+      <input
+        {% if assignment.attribute.data_type == 'number' %}type="number" step="any"{% elif assignment.attribute.data_type == 'date' %}type="date"{% else %}type="text"{% endif %}
+        name="value_text"
+        value="{{ first_value }}"
+        {% if assignment.attribute.is_required %}required{% endif %}
+      >
+      {% endif %}
       <p class="small muted">Для даты используйте формат YYYY-MM-DD.</p>
     {% elif assignment.attribute.data_type == 'bool' %}
+      <p class="small muted">Для логического атрибута: отмечено = Да, снято = Нет.</p>
       <label><input type="checkbox" name="value_bool" {% if assignment.values and assignment.values[0].value_bool %}checked{% endif %}> Истина</label>
     {% elif assignment.attribute.data_type == 'enum' %}
-      <label>Значение справочника</label>
-      <select name="enum_values" {% if assignment.attribute.is_multivalue %}multiple size="8"{% endif %}>
+      <label>Значение справочника{% if assignment.attribute.is_required %}*{% endif %}</label>
+      <select name="enum_values" {% if assignment.attribute.is_multivalue %}multiple size="8"{% endif %} {% if assignment.attribute.is_required %}required{% endif %}>
         {% for item in enum_items %}
         <option value="{{ item.id }}" {% if item.id in selected_enum_ids %}selected{% endif %}>{{ item.label }}</option>
         {% endfor %}

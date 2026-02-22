@@ -14,7 +14,10 @@
   {% if can_manage %}
   <div class="modal-actions">
     <button type="button" onclick="document.getElementById('editCollectionModal').showModal()">Редактировать</button>
-  </div>
+
+    <form method="post" action="/collections/{{ collection.id }}/delete" class="inline" onsubmit="return confirm('Удалить коллекцию?');">
+      <button type="submit" class="warn">Удалить</button>
+    </form>  </div>
   <dialog id="editCollectionModal" class="modal">
     <div class="modal-body">
       <div class="modal-header">

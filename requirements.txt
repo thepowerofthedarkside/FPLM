@@ -6,3 +6,4 @@ python-multipart==0.0.20
 itsdangerous==2.2.0
 qrcode==8.2
 pillow==11.2.1
+reportlab==4.2.2

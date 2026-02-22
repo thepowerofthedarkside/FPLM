@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal, InvalidOperation
@@ -16,7 +16,7 @@ from .models import (
 )
 
 DATA_TYPES = {"string", "number", "date", "bool", "enum"}
-ROLES = {"admin", "content-manager", "dictionary-manager", "read-only"}
+ROLES = {"admin", "user", "guest"}
 PRODUCT_STATUSES = {"draft", "active", "archived"}
 
 
@@ -153,3 +153,4 @@ def can_change_attribute_type(db: Session, attribute_id: int) -> bool:
         .limit(1)
     )
     return db.execute(stmt).first() is None
+

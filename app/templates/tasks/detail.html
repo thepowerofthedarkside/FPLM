@@ -41,13 +41,13 @@
           <label>Очередь</label>
           <select name="queue_id_raw"><option value="">-</option>{% for q in queues %}<option value="{{ q.id }}" {% if task.queue_id==q.id %}selected{% endif %}>{{ q.name }}</option>{% endfor %}</select>
         </div>
-<div>
-          <label>Коллекция</label>
-          <select name="collection_id_raw"><option value="">-</option>{% for c in collections %}<option value="{{ c.id }}" {% if task.collection_id==c.id %}selected{% endif %}>{{ c.code }} - {{ c.name }}</option>{% endfor %}</select>
-        </div>
         <div>
           <label>Изделие</label>
           <select name="product_id_raw"><option value="">-</option>{% for p in products %}<option value="{{ p.id }}" {% if task.product_id==p.id %}selected{% endif %}>{{ p.sku }} - {{ p.name }}</option>{% endfor %}</select>
+        </div>
+        <div>
+          <label>Коллекция</label>
+          <select name="collection_id_raw"><option value="">-</option>{% for c in collections %}<option value="{{ c.id }}" {% if task.collection_id==c.id %}selected{% endif %}>{{ c.code }} - {{ c.name }}</option>{% endfor %}</select>
         </div>
         <div style="grid-column:1/-1;"><label>Комментарий</label><textarea name="comment">{{ task.comment or '' }}</textarea></div>
         <div><button type="submit">Сохранить</button></div>
@@ -87,4 +87,31 @@
     </table>
   </div>
 </div>
+
+{% if can_manage %}
+<script>
+(() => {
+  const productCollectionMap = {{ product_collection_map | tojson }};
+  const form = document.querySelector('#editTaskModal form[action$="/update"]');
+  if (!form) return;
+  const productSelect = form.querySelector('select[name="product_id_raw"]');
+  const collectionSelect = form.querySelector('select[name="collection_id_raw"]');
+  if (!productSelect || !collectionSelect) return;
+
+  const syncCollectionFromProduct = () => {
+    const productId = productSelect.value;
+    if (!productId) {
+      collectionSelect.disabled = false;
+      return;
+    }
+    const collectionId = productCollectionMap[productId];
+    collectionSelect.value = collectionId ? String(collectionId) : "";
+    collectionSelect.disabled = true;
+  };
+
+  productSelect.addEventListener("change", syncCollectionFromProduct);
+  syncCollectionFromProduct();
+})();
+</script>
+{% endif %}
 {% endblock %}

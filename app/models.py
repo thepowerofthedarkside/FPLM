@@ -1,4 +1,4 @@
-﻿from datetime import datetime
+from datetime import datetime
 
 from sqlalchemy import (
     Boolean,
@@ -144,6 +144,7 @@ class ProductSpec(Base):
     collection_id: Mapped[int | None] = mapped_column(ForeignKey("collections.id"), nullable=True)
     supplier_id: Mapped[int | None] = mapped_column(ForeignKey("suppliers.id"), nullable=True)
     style_type: Mapped[str | None] = mapped_column(String(80), nullable=True)  # coat/trench/puffer etc
+    capsule: Mapped[str | None] = mapped_column(String(120), nullable=True)
     silhouette: Mapped[str | None] = mapped_column(String(80), nullable=True)
     fit_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
     length_cm: Mapped[float | None] = mapped_column(Numeric(8, 2), nullable=True)

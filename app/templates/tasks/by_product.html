@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Задачи по изделию: {{ product.sku }} - {{ product.name }}</h1>
+
+<div class="card">
+  <div class="modal-actions" style="margin-bottom:0;">
+    <a href="/products/{{ product.id }}" class="ghost">Открыть карточку изделия</a>
+    <a href="/products" class="ghost">К списку изделий</a>
+  </div>
+</div>
+
+<div class="card table-wrap">
+  {% if tasks %}
+  <table>
+    <thead><tr><th>ID</th><th>Название</th><th>Статус</th><th>Приоритет</th><th>Очередь</th><th>Автор</th><th>Исполнитель</th><th>Коллекция</th><th>Дедлайн</th></tr></thead>
+    <tbody>
+      {% for t in tasks %}
+      <tr>
+        <td>{{ t.id }}</td>
+        <td><a href="/tasks/{{ t.id }}">{{ t.title }}</a></td>
+        <td>{{ task_status_labels.get(t.status, t.status) }}</td>
+        <td>{{ task_priority_labels.get(t.priority, t.priority) }}</td>
+        <td>{{ t.queue.name if t.queue else '' }}</td>
+        <td>{{ t.author.login if t.author else '' }}</td>
+        <td>{{ t.assignee.login if t.assignee else '' }}</td>
+        <td>{{ (t.collection.code ~ ' - ' ~ t.collection.name) if t.collection else '' }}</td>
+        <td>{{ t.deadline.isoformat() if t.deadline else '' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">По этому изделию задач пока нет.</p>
+  {% endif %}
+</div>
+{% endblock %}

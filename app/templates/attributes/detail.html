@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block content %}
 <h1>Атрибут: {{ attribute.name }}</h1>
 <div class="card">
@@ -7,6 +7,9 @@
     <button type="button" onclick="document.getElementById('editAttributeModal').showModal()">Редактировать</button>
     <form method="post" action="/attributes/{{ attribute.id }}/deactivate" class="inline" onsubmit="return confirm('Деактивировать атрибут?');">
       <button type="submit" class="warn">Деактивировать</button>
+    </form>
+    <form method="post" action="/attributes/{{ attribute.id }}/delete" class="inline" onsubmit="return confirm('Удалить атрибут? Действие необратимо.');">
+      <button type="submit" class="danger">Удалить</button>
     </form>
   </div>
   <dialog id="editAttributeModal" class="modal">
@@ -26,7 +29,7 @@
         </div>
         <div>
           <label>Справочник (для enum)</label>
-          <select name="dictionary_id">
+          <select name="dictionary_id_raw">
             <option value="">-</option>
             {% for d in dictionaries %}<option value="{{ d.id }}" {% if attribute.dictionary_id==d.id %}selected{% endif %}>{{ d.name }}</option>{% endfor %}
           </select>

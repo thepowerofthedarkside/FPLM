@@ -24,6 +24,7 @@
     {% if can_manage %}
     <div class="hero-actions">
       <button type="button" class="primary" onclick="document.getElementById('editProductModal').showModal()">Редактировать</button>
+      <a href="/products/{{ product.id }}/pdf">Скачать PDF</a>
       {% if product.status == 'archived' %}
       <form method="post" action="/products/{{ product.id }}/unarchive" class="inline" onsubmit="return confirm('Убрать изделие из архива?');"><button type="submit" class="secondary">Убрать из архива</button></form>
       {% else %}
@@ -59,6 +60,7 @@
     </dialog>
     {% else %}
     <div class="hero-actions">
+      <a href="/products/{{ product.id }}/pdf">Скачать PDF</a>
     </div>
     {% endif %}
   </div>
@@ -110,6 +112,10 @@
     <div class="spec-chip">
       <div class="spec-label">Тип изделия</div>
       <div class="spec-value">{{ product.spec.style_type if product.spec and product.spec.style_type else '-' }}</div>
+    </div>
+    <div class="spec-chip">
+      <div class="spec-label">Капсула</div>
+      <div class="spec-value">{{ product.spec.capsule if product.spec and product.spec.capsule else '-' }}</div>
     </div>
     <div class="spec-chip">
       <div class="spec-label">Этап образца</div>
@@ -184,15 +190,55 @@
         </div>
         <div>
           <label><span class="label-row">Тип изделия <span class="tooltip" data-tip="Вид верхней одежды: пальто, тренч, пуховик, куртка.">?</span></span></label>
+          {% if spec_dictionary_options.style_type %}
+          <select name="style_type">
+            <option value="">-</option>
+            {% for item in spec_dictionary_options.style_type %}
+            <option value="{{ item.label }}" {% if product.spec and product.spec.style_type==item.label %}selected{% endif %}>{{ item.label }}</option>
+            {% endfor %}
+          </select>
+          {% else %}
           <input name="style_type" value="{{ product.spec.style_type if product.spec else '' }}" placeholder="пальто / тренч / пуховик">
+          {% endif %}
+        </div>
+        <div>
+          <label><span class="label-row">Капсула <span class="tooltip" data-tip="Маркетинговая капсула или дроп, к которому относится изделие.">?</span></span></label>
+          {% if spec_dictionary_options.capsule %}
+          <select name="capsule">
+            <option value="">-</option>
+            {% for item in spec_dictionary_options.capsule %}
+            <option value="{{ item.label }}" {% if product.spec and product.spec.capsule==item.label %}selected{% endif %}>{{ item.label }}</option>
+            {% endfor %}
+          </select>
+          {% else %}
+          <input name="capsule" value="{{ product.spec.capsule if product.spec else '' }}" placeholder="Core / Studio / Weekend">
+          {% endif %}
         </div>
         <div>
           <label><span class="label-row">Силуэт <span class="tooltip" data-tip="Визуальная форма изделия: оверсайз, прямой, приталенный.">?</span></span></label>
+          {% if spec_dictionary_options.silhouette %}
+          <select name="silhouette">
+            <option value="">-</option>
+            {% for item in spec_dictionary_options.silhouette %}
+            <option value="{{ item.label }}" {% if product.spec and product.spec.silhouette==item.label %}selected{% endif %}>{{ item.label }}</option>
+            {% endfor %}
+          </select>
+          {% else %}
           <input name="silhouette" value="{{ product.spec.silhouette if product.spec else '' }}" placeholder="оверсайз / прямой / приталенный">
+          {% endif %}
         </div>
         <div>
           <label><span class="label-row">Посадка <span class="tooltip" data-tip="Ощущение посадки на фигуре: regular, relaxed, slim.">?</span></span></label>
+          {% if spec_dictionary_options.fit_type %}
+          <select name="fit_type">
+            <option value="">-</option>
+            {% for item in spec_dictionary_options.fit_type %}
+            <option value="{{ item.label }}" {% if product.spec and product.spec.fit_type==item.label %}selected{% endif %}>{{ item.label }}</option>
+            {% endfor %}
+          </select>
+          {% else %}
           <input name="fit_type" value="{{ product.spec.fit_type if product.spec else '' }}">
+          {% endif %}
         </div>
         <div>
           <label><span class="label-row">Длина (см) <span class="tooltip" data-tip="Длина изделия по спинке в сантиметрах.">?</span></span></label>
@@ -200,15 +246,42 @@
         </div>
         <div>
           <label><span class="label-row">Основной материал <span class="tooltip" data-tip="Материал верха изделия, например: шерсть, полиамид, мембрана.">?</span></span></label>
+          {% if spec_dictionary_options.shell_material %}
+          <select name="shell_material">
+            <option value="">-</option>
+            {% for item in spec_dictionary_options.shell_material %}
+            <option value="{{ item.label }}" {% if product.spec and product.spec.shell_material==item.label %}selected{% endif %}>{{ item.label }}</option>
+            {% endfor %}
+          </select>
+          {% else %}
           <input name="shell_material" value="{{ product.spec.shell_material if product.spec else '' }}">
+          {% endif %}
         </div>
         <div>
           <label><span class="label-row">Подкладка <span class="tooltip" data-tip="Материал внутренней подкладки: вискоза, полиэстер и т.д.">?</span></span></label>
+          {% if spec_dictionary_options.lining_material %}
+          <select name="lining_material">
+            <option value="">-</option>
+            {% for item in spec_dictionary_options.lining_material %}
+            <option value="{{ item.label }}" {% if product.spec and product.spec.lining_material==item.label %}selected{% endif %}>{{ item.label }}</option>
+            {% endfor %}
+          </select>
+          {% else %}
           <input name="lining_material" value="{{ product.spec.lining_material if product.spec else '' }}">
+          {% endif %}
         </div>
         <div>
           <label><span class="label-row">Утеплитель <span class="tooltip" data-tip="Тип утеплителя: пух, синтетический утеплитель и др.">?</span></span></label>
+          {% if spec_dictionary_options.insulation %}
+          <select name="insulation">
+            <option value="">-</option>
+            {% for item in spec_dictionary_options.insulation %}
+            <option value="{{ item.label }}" {% if product.spec and product.spec.insulation==item.label %}selected{% endif %}>{{ item.label }}</option>
+            {% endfor %}
+          </select>
+          {% else %}
           <input name="insulation" value="{{ product.spec.insulation if product.spec else '' }}">
+          {% endif %}
         </div>
         <div>
           <label><span class="label-row">Этап образца <span class="tooltip" data-tip="Текущая стадия: прототип, презентационный, предпроизводственный или производство.">?</span></span></label>
@@ -225,6 +298,68 @@
           <label><span class="label-row">Факт. себестоимость <span class="tooltip" data-tip="Фактическая себестоимость после расчета по материалам и операциям.">?</span></span></label>
           <input name="actual_cost_raw" value="{{ product.spec.actual_cost if product.spec and product.spec.actual_cost is not none else '' }}">
         </div>
+        {% if attribute_assignments %}
+        <div style="grid-column:1/-1;"><h4 style="margin:8px 0 0;">Атрибуты изделия</h4></div>
+        {% for assignment in attribute_assignments %}
+        {% set attr = assignment.attribute %}
+        {% set first_value = assignment.values[0] if assignment.values else None %}
+        <div>
+          <label>{{ attr.name }}{% if attr.is_required %}*{% endif %}</label>
+          {% if attr.data_type == "bool" %}
+          <label class="check-label">
+            <input type="checkbox" name="attr_{{ assignment.id }}_bool" value="1" {% if first_value and first_value.value_bool %}checked{% endif %}>
+            Да
+          </label>
+          {% elif attr.data_type == "enum" %}
+            {% set options = enum_options_by_attr.get(assignment.id, []) %}
+            {% if attr.is_multivalue %}
+              {% set selected_ids = assignment.values | map(attribute='dictionary_item_id') | list %}
+              {% set selected_labels = assignment.values | selectattr('dictionary_item') | map(attribute='dictionary_item.label') | list %}
+              <details class="multi-check-dropdown">
+                <summary class="multi-check-summary">
+                  {% if selected_labels %}
+                    {{ selected_labels | join(', ') }}
+                  {% else %}
+                    Выберите значения
+                  {% endif %}
+                </summary>
+                <div class="multi-check-list">
+                  {% for item in options %}
+                  <label class="multi-check-item">
+                    <input type="checkbox" name="attr_{{ assignment.id }}_enum" value="{{ item.id }}" {% if item.id in selected_ids %}checked{% endif %}>
+                    <span>{{ item.label }}</span>
+                  </label>
+                  {% endfor %}
+                </div>
+              </details>
+            {% else %}
+              <select name="attr_{{ assignment.id }}_enum" {% if attr.is_required %}required{% endif %}>
+                <option value="">-</option>
+                {% for item in options %}
+                <option value="{{ item.id }}" {% if first_value and first_value.dictionary_item_id == item.id %}selected{% endif %}>{{ item.label }}</option>
+                {% endfor %}
+              </select>
+            {% endif %}
+          {% elif attr.data_type == "date" %}
+            <input type="date" name="attr_{{ assignment.id }}_value" value="{{ first_value.value_date.isoformat() if first_value and first_value.value_date else '' }}" {% if attr.is_required %}required{% endif %}>
+          {% elif attr.data_type == "number" %}
+            {% if attr.is_multivalue %}
+            <textarea name="attr_{{ assignment.id }}_value" {% if attr.is_required %}required{% endif %}>{% for value in assignment.values %}{{ value.value_number if value.value_number is not none else '' }}{% if not loop.last %}
+{% endif %}{% endfor %}</textarea>
+            {% else %}
+            <input name="attr_{{ assignment.id }}_value" value="{{ first_value.value_number if first_value and first_value.value_number is not none else '' }}" {% if attr.is_required %}required{% endif %}>
+            {% endif %}
+          {% else %}
+            {% if attr.is_multivalue %}
+            <textarea name="attr_{{ assignment.id }}_value" {% if attr.is_required %}required{% endif %}>{% for value in assignment.values %}{{ value.value_string or '' }}{% if not loop.last %}
+{% endif %}{% endfor %}</textarea>
+            {% else %}
+            <input name="attr_{{ assignment.id }}_value" value="{{ first_value.value_string if first_value else '' }}" {% if attr.is_required %}required{% endif %}>
+            {% endif %}
+          {% endif %}
+        </div>
+        {% endfor %}
+        {% endif %}
         <div><button type="submit">Сохранить</button></div>
       </form>
     </div>
@@ -246,23 +381,23 @@
   <div class="spec-grid">
     <div class="spec-chip">
       <div class="spec-label">Дизайнер</div>
-      <div class="spec-value">{% if product.designer %}{{ product.designer.full_name or product.designer.login }}{% else %}-{% endif %}</div>
+      <div class="spec-value">{% if product.designer %}{{ product.designer.full_name or product.designer.login }} + {{ product.designer.position_item.label if product.designer.position_item else (product.designer.position or '-') }}{% else %}-{% endif %}</div>
     </div>
     <div class="spec-chip">
       <div class="spec-label">Продукт менеджер</div>
-      <div class="spec-value">{% if product.product_manager %}{{ product.product_manager.full_name or product.product_manager.login }}{% else %}-{% endif %}</div>
+      <div class="spec-value">{% if product.product_manager %}{{ product.product_manager.full_name or product.product_manager.login }} + {{ product.product_manager.position_item.label if product.product_manager.position_item else (product.product_manager.position or '-') }}{% else %}-{% endif %}</div>
     </div>
     <div class="spec-chip">
       <div class="spec-label">Конструктор-модельер</div>
-      <div class="spec-value">{% if product.pattern_maker %}{{ product.pattern_maker.full_name or product.pattern_maker.login }}{% else %}-{% endif %}</div>
+      <div class="spec-value">{% if product.pattern_maker %}{{ product.pattern_maker.full_name or product.pattern_maker.login }} + {{ product.pattern_maker.position_item.label if product.pattern_maker.position_item else (product.pattern_maker.position or '-') }}{% else %}-{% endif %}</div>
     </div>
     <div class="spec-chip">
       <div class="spec-label">Технолог</div>
-      <div class="spec-value">{% if product.technologist %}{{ product.technologist.full_name or product.technologist.login }}{% else %}-{% endif %}</div>
+      <div class="spec-value">{% if product.technologist %}{{ product.technologist.full_name or product.technologist.login }} + {{ product.technologist.position_item.label if product.technologist.position_item else (product.technologist.position or '-') }}{% else %}-{% endif %}</div>
     </div>
     <div class="spec-chip">
       <div class="spec-label">Руководитель отдела</div>
-      <div class="spec-value">{% if product.department_head %}{{ product.department_head.full_name or product.department_head.login }}{% else %}-{% endif %}</div>
+      <div class="spec-value">{% if product.department_head %}{{ product.department_head.full_name or product.department_head.login }} + {{ product.department_head.position_item.label if product.department_head.position_item else (product.department_head.position or '-') }}{% else %}-{% endif %}</div>
     </div>
   </div>
   {% if can_manage %}
@@ -278,7 +413,7 @@
           <select name="designer_id_raw">
             <option value="">-</option>
             {% for u in active_users %}
-            <option value="{{ u.id }}" {% if product.designer_id==u.id %}selected{% endif %}>{{ u.full_name or u.login }} ({{ role_labels.get(u.role, u.role) }})</option>
+            <option value="{{ u.id }}" {% if product.designer_id==u.id %}selected{% endif %}>{{ u.full_name or u.login }} + {{ u.position_item.label if u.position_item else (u.position or 'Без должности') }}</option>
             {% endfor %}
           </select>
         </div>
@@ -287,7 +422,7 @@
           <select name="product_manager_id_raw">
             <option value="">-</option>
             {% for u in active_users %}
-            <option value="{{ u.id }}" {% if product.product_manager_id==u.id %}selected{% endif %}>{{ u.full_name or u.login }} ({{ role_labels.get(u.role, u.role) }})</option>
+            <option value="{{ u.id }}" {% if product.product_manager_id==u.id %}selected{% endif %}>{{ u.full_name or u.login }} + {{ u.position_item.label if u.position_item else (u.position or 'Без должности') }}</option>
             {% endfor %}
           </select>
         </div>
@@ -296,7 +431,7 @@
           <select name="pattern_maker_id_raw">
             <option value="">-</option>
             {% for u in active_users %}
-            <option value="{{ u.id }}" {% if product.pattern_maker_id==u.id %}selected{% endif %}>{{ u.full_name or u.login }} ({{ role_labels.get(u.role, u.role) }})</option>
+            <option value="{{ u.id }}" {% if product.pattern_maker_id==u.id %}selected{% endif %}>{{ u.full_name or u.login }} + {{ u.position_item.label if u.position_item else (u.position or 'Без должности') }}</option>
             {% endfor %}
           </select>
         </div>
@@ -305,7 +440,7 @@
           <select name="technologist_id_raw">
             <option value="">-</option>
             {% for u in active_users %}
-            <option value="{{ u.id }}" {% if product.technologist_id==u.id %}selected{% endif %}>{{ u.full_name or u.login }} ({{ role_labels.get(u.role, u.role) }})</option>
+            <option value="{{ u.id }}" {% if product.technologist_id==u.id %}selected{% endif %}>{{ u.full_name or u.login }} + {{ u.position_item.label if u.position_item else (u.position or 'Без должности') }}</option>
             {% endfor %}
           </select>
         </div>
@@ -314,7 +449,7 @@
           <select name="department_head_id_raw">
             <option value="">-</option>
             {% for u in active_users %}
-            <option value="{{ u.id }}" {% if product.department_head_id==u.id %}selected{% endif %}>{{ u.full_name or u.login }} ({{ role_labels.get(u.role, u.role) }})</option>
+            <option value="{{ u.id }}" {% if product.department_head_id==u.id %}selected{% endif %}>{{ u.full_name or u.login }} + {{ u.position_item.label if u.position_item else (u.position or 'Без должности') }}</option>
             {% endfor %}
           </select>
         </div>
@@ -388,5 +523,36 @@
   </div>
 </div>
 
+<div class="card">
+  <div class="card-header-row">
+    <h3>Задачи по изделию</h3>
+    {% if can_manage %}
+    <a href="/queues" class="ghost">Создать задачу</a>
+    {% endif %}
+  </div>
+  {% if product_tasks %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>ID</th><th>Название</th><th>Статус</th><th>Приоритет</th><th>Очередь</th><th>Автор</th><th>Исполнитель</th><th>Дедлайн</th></tr></thead>
+      <tbody>
+        {% for t in product_tasks %}
+        <tr>
+          <td>{{ t.id }}</td>
+          <td><a href="/tasks/{{ t.id }}">{{ t.title }}</a></td>
+          <td>{{ task_status_labels.get(t.status, t.status) }}</td>
+          <td>{{ task_priority_labels.get(t.priority, t.priority) }}</td>
+          <td>{{ t.queue.name if t.queue else '' }}</td>
+          <td>{{ t.author.login if t.author else '' }}</td>
+          <td>{{ t.assignee.login if t.assignee else '' }}</td>
+          <td>{{ t.deadline.isoformat() if t.deadline else '' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="muted">По этому изделию пока нет задач.</p>
+  {% endif %}
+</div>
 {% endblock %}
 

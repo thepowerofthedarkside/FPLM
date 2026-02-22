@@ -35,10 +35,12 @@
         </td>
         <td class="actions">
           <a href="/products/{{ product.id }}/attributes/{{ a.id }}">Редактировать значение</a>
-          {% if can_manage %}
+          {% if can_manage and not a.attribute.is_required %}
           <form method="post" action="/products/{{ product.id }}/attributes/{{ a.id }}/remove" class="inline" onsubmit="return confirm('Снять атрибут с изделия?');">
             <button type="submit" class="danger">Снять</button>
           </form>
+          {% elif a.attribute.is_required %}
+          <span class="small muted">Обязательный атрибут</span>
           {% endif %}
         </td>
       </tr>

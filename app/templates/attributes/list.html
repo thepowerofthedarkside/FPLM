@@ -30,13 +30,13 @@
     </div>
     <div>
       <label><span class="label-row">Справочник (для enum) <span class="tooltip" data-tip="Укажите справочник, если тип данных 'Справочник'.">?</span></span></label>
-      <select name="dictionary_id">
+      <select name="dictionary_id_raw">
         <option value="">-</option>
         {% for d in dictionaries %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}
       </select>
     </div>
-    <div><label><input type="checkbox" name="is_required"> Обязательный</label></div>
-    <div><label><input type="checkbox" name="is_multivalue"> Множественный</label></div>
+    <div><label class="check-label"><input type="checkbox" name="is_required"> Обязательный</label></div>
+    <div><label class="check-label"><input type="checkbox" name="is_multivalue"> Множественный</label></div>
     <div><button type="submit">Создать</button></div>
   </form>
 </div>
@@ -51,7 +51,7 @@
         <td>{{ a.code }}</td>
         <td><a href="/attributes/{{ a.id }}">{{ a.name }}</a></td>
         <td>{{ data_type_labels.get(a.data_type, a.data_type) }}</td>
-        <td>{{ a.dictionary.name if a.dictionary else "" }}</td>
+        <td>{% if a.dictionary %}<a href="/dictionaries/{{ a.dictionary.id }}">{{ a.dictionary.name }}</a>{% endif %}</td>
         <td>{{ "Да" if a.is_required else "Нет" }}</td>
         <td>{{ "Да" if a.is_multivalue else "Нет" }}</td>
         <td>{{ "Активен" if a.is_active else "Неактивен" }}</td>
