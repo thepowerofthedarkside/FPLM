@@ -381,23 +381,23 @@
   <div class="spec-grid">
     <div class="spec-chip">
       <div class="spec-label">Дизайнер</div>
-      <div class="spec-value">{% if product.designer %}{{ product.designer.full_name or product.designer.login }} + {{ product.designer.position_item.label if product.designer.position_item else (product.designer.position or '-') }}{% else %}-{% endif %}</div>
+      <div class="spec-value">{% if product.designer %}{{ product.designer.full_name or product.designer.login }} ({{ product.designer.position_item.label if product.designer.position_item else (product.designer.position or '-') }}){% else %}-{% endif %}</div>
     </div>
     <div class="spec-chip">
       <div class="spec-label">Продукт менеджер</div>
-      <div class="spec-value">{% if product.product_manager %}{{ product.product_manager.full_name or product.product_manager.login }} + {{ product.product_manager.position_item.label if product.product_manager.position_item else (product.product_manager.position or '-') }}{% else %}-{% endif %}</div>
+      <div class="spec-value">{% if product.product_manager %}{{ product.product_manager.full_name or product.product_manager.login }} ({{ product.product_manager.position_item.label if product.product_manager.position_item else (product.product_manager.position or '-') }}){% else %}-{% endif %}</div>
     </div>
     <div class="spec-chip">
       <div class="spec-label">Конструктор-модельер</div>
-      <div class="spec-value">{% if product.pattern_maker %}{{ product.pattern_maker.full_name or product.pattern_maker.login }} + {{ product.pattern_maker.position_item.label if product.pattern_maker.position_item else (product.pattern_maker.position or '-') }}{% else %}-{% endif %}</div>
+      <div class="spec-value">{% if product.pattern_maker %}{{ product.pattern_maker.full_name or product.pattern_maker.login }} ({{ product.pattern_maker.position_item.label if product.pattern_maker.position_item else (product.pattern_maker.position or '-') }}){% else %}-{% endif %}</div>
     </div>
     <div class="spec-chip">
       <div class="spec-label">Технолог</div>
-      <div class="spec-value">{% if product.technologist %}{{ product.technologist.full_name or product.technologist.login }} + {{ product.technologist.position_item.label if product.technologist.position_item else (product.technologist.position or '-') }}{% else %}-{% endif %}</div>
+      <div class="spec-value">{% if product.technologist %}{{ product.technologist.full_name or product.technologist.login }} ({{ product.technologist.position_item.label if product.technologist.position_item else (product.technologist.position or '-') }}){% else %}-{% endif %}</div>
     </div>
     <div class="spec-chip">
       <div class="spec-label">Руководитель отдела</div>
-      <div class="spec-value">{% if product.department_head %}{{ product.department_head.full_name or product.department_head.login }} + {{ product.department_head.position_item.label if product.department_head.position_item else (product.department_head.position or '-') }}{% else %}-{% endif %}</div>
+      <div class="spec-value">{% if product.department_head %}{{ product.department_head.full_name or product.department_head.login }} ({{ product.department_head.position_item.label if product.department_head.position_item else (product.department_head.position or '-') }}){% else %}-{% endif %}</div>
     </div>
   </div>
   {% if can_manage %}
@@ -413,7 +413,7 @@
           <select name="designer_id_raw">
             <option value="">-</option>
             {% for u in active_users %}
-            <option value="{{ u.id }}" {% if product.designer_id==u.id %}selected{% endif %}>{{ u.full_name or u.login }} + {{ u.position_item.label if u.position_item else (u.position or 'Без должности') }}</option>
+            <option value="{{ u.id }}" {% if product.designer_id==u.id %}selected{% endif %}>{{ u.full_name or u.login }} ({{ u.position_item.label if u.position_item else (u.position or 'Без должности') }})</option>
             {% endfor %}
           </select>
         </div>
@@ -422,7 +422,7 @@
           <select name="product_manager_id_raw">
             <option value="">-</option>
             {% for u in active_users %}
-            <option value="{{ u.id }}" {% if product.product_manager_id==u.id %}selected{% endif %}>{{ u.full_name or u.login }} + {{ u.position_item.label if u.position_item else (u.position or 'Без должности') }}</option>
+            <option value="{{ u.id }}" {% if product.product_manager_id==u.id %}selected{% endif %}>{{ u.full_name or u.login }} ({{ u.position_item.label if u.position_item else (u.position or 'Без должности') }})</option>
             {% endfor %}
           </select>
         </div>
@@ -431,7 +431,7 @@
           <select name="pattern_maker_id_raw">
             <option value="">-</option>
             {% for u in active_users %}
-            <option value="{{ u.id }}" {% if product.pattern_maker_id==u.id %}selected{% endif %}>{{ u.full_name or u.login }} + {{ u.position_item.label if u.position_item else (u.position or 'Без должности') }}</option>
+            <option value="{{ u.id }}" {% if product.pattern_maker_id==u.id %}selected{% endif %}>{{ u.full_name or u.login }} ({{ u.position_item.label if u.position_item else (u.position or 'Без должности') }})</option>
             {% endfor %}
           </select>
         </div>
@@ -440,7 +440,7 @@
           <select name="technologist_id_raw">
             <option value="">-</option>
             {% for u in active_users %}
-            <option value="{{ u.id }}" {% if product.technologist_id==u.id %}selected{% endif %}>{{ u.full_name or u.login }} + {{ u.position_item.label if u.position_item else (u.position or 'Без должности') }}</option>
+            <option value="{{ u.id }}" {% if product.technologist_id==u.id %}selected{% endif %}>{{ u.full_name or u.login }} ({{ u.position_item.label if u.position_item else (u.position or 'Без должности') }})</option>
             {% endfor %}
           </select>
         </div>
@@ -449,7 +449,7 @@
           <select name="department_head_id_raw">
             <option value="">-</option>
             {% for u in active_users %}
-            <option value="{{ u.id }}" {% if product.department_head_id==u.id %}selected{% endif %}>{{ u.full_name or u.login }} + {{ u.position_item.label if u.position_item else (u.position or 'Без должности') }}</option>
+            <option value="{{ u.id }}" {% if product.department_head_id==u.id %}selected{% endif %}>{{ u.full_name or u.login }} ({{ u.position_item.label if u.position_item else (u.position or 'Без должности') }})</option>
             {% endfor %}
           </select>
         </div>
