@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block content %}
 <h1>Коллекция: {{ collection.name }}</h1>
 <div class="card">
@@ -53,4 +53,48 @@
     </tbody>
   </table>
 </div>
+
+{% with entity_type='collection', entity_id=collection.id, comments=comments, can_manage=can_manage %}
+  {% include "partials/comments.html" %}
+{% endwith %}
+
+<div class="card">
+  <div class="card-header-row">
+    <h3>История изменений</h3>
+    {% if user.role == 'admin' %}
+    <a href="/audit?scope_type=collection&scope_id_raw={{ collection.id }}" class="ghost">Весь аудит</a>
+    {% endif %}
+  </div>
+  {% if collection_audit_rows %}
+  <div class="audit-list">
+    {% for event in collection_audit_rows %}
+    <details class="audit-item" {% if loop.first %}open{% endif %}>
+      <summary class="audit-summary-row">
+        <div>
+          <div class="audit-summary">{{ event.row.summary }}</div>
+          <div class="audit-meta">{{ event.row.created_at.strftime('%Y-%m-%d %H:%M') if event.row.created_at else '' }}</div>
+        </div>
+      </summary>
+      {% if event.changes_view %}
+      <div class="audit-body">
+        <div class="table-wrap">
+          <table class="audit-change-table">
+            <thead><tr><th>Поле</th><th>Было</th><th>Стало</th></tr></thead>
+            <tbody>
+              {% for change in event.changes_view %}
+              <tr><td>{{ change.label }}</td><td>{{ change.before }}</td><td>{{ change.after }}</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+    </details>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="muted">История изменений пока пуста.</p>
+  {% endif %}
+</div>
 {% endblock %}
+

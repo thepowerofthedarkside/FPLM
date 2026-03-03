@@ -1,6 +1,35 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block content %}
 <h1>Кабинет</h1>
+
+<div class="card">
+  <div class="card-header-row">
+    <div>
+      <h3>Напоминания по задачам</h3>
+      <p class="muted">Дедлайны, просрочки и задачи без движения</p>
+    </div>
+    <a href="/tasks" class="ghost">Все задачи</a>
+  </div>
+  {% if task_reminders %}
+  <div class="notification-list">
+    {% for item in task_reminders %}
+    <div class="notification-item{% if item.kind == 'overdue' %} is-unread{% endif %}">
+      <div class="notification-item-head">
+        <strong>{{ item.title }}</strong>
+        <span>{{ task_status_labels.get(item.task.status, item.task.status) }}</span>
+      </div>
+      <p>{{ item.message }}</p>
+      <div class="actions">
+        <a href="{{ item.link_url }}" class="ghost">Открыть задачу</a>
+        {% if item.task.product %}<a href="/products/{{ item.task.product.id }}" class="ghost">Изделие</a>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="muted">Сейчас нет напоминаний по дедлайнам, просрочкам и зависшим задачам.</p>
+  {% endif %}
+</div>
 
 <div class="card">
   <h3>Мои задачи: я автор</h3>
@@ -69,4 +98,41 @@
     </table>
   </div>
 </div>
+
+<div class="card">
+  <div class="card-header-row">
+    <div>
+      <h3>Мои уведомления</h3>
+      <p class="muted">Последние события по вашим задачам и изделиям</p>
+    </div>
+    <div class="actions">
+      <a href="/notifications" class="ghost">Все уведомления</a>
+      <a href="/notifications" class="ghost">Настройки уведомлений</a>
+    </div>
+  </div>
+  {% if recent_notifications %}
+  <div class="notification-list">
+    {% for item in recent_notifications %}
+    <div class="notification-item{% if not item.is_read %} is-unread{% endif %}">
+      <div class="notification-item-head">
+        <strong>{{ item.title }}</strong>
+        <span>{{ item.created_at.strftime('%Y-%m-%d %H:%M') if item.created_at else '' }}</span>
+      </div>
+      <p>{{ item.message }}</p>
+      <div class="actions">
+        {% if item.link_url %}<a href="{{ item.link_url }}" class="ghost">Открыть</a>{% endif %}
+        {% if not item.is_read %}
+        <form method="post" action="/notifications/{{ item.id }}/read" class="inline">
+          <button type="submit" class="secondary">Прочитано</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="muted">Пока нет уведомлений.</p>
+  {% endif %}
+</div>
 {% endblock %}
+

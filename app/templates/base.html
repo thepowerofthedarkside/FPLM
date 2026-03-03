@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ title or "FPLM" }}</title>
+  <link rel="icon" href="/static/favicon.ico" sizes="any">
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
@@ -16,12 +17,19 @@
         <a href="/boards">Канбан</a>
         <a href="/collections">Коллекции</a>
         <a href="/suppliers">Поставщики</a>
-        <a href="/attributes">Атрибуты</a>
-        <a href="/dictionaries">Справочники</a>
-        {% if user.role == 'admin' %}<a href="/users">Пользователи</a>{% endif %}
-        {% if user.role == 'admin' %}<a href="/settings">Настройки</a>{% endif %}
+        <details class="nav-dropdown">
+          <summary class="{% if request.url.path.startswith('/attributes') or request.url.path.startswith('/dictionaries') or request.url.path.startswith('/users') or request.url.path.startswith('/audit') or request.url.path.startswith('/settings') %}is-active{% endif %}">Настройки</summary>
+          <div class="nav-dropdown-menu">
+            <a href="/dictionaries">Справочники</a>
+            <a href="/attributes">Атрибуты</a>
+            {% if user.role == 'admin' %}<a href="/users">Пользователи</a>{% endif %}
+            {% if user.role == 'admin' %}<a href="/audit">Аудит</a>{% endif %}
+            {% if user.role == 'admin' %}<a href="/settings">Настройки</a>{% endif %}
+          </div>
+        </details>
       </div>
       <div class="nav-right">
+        <a href="/notifications">Уведомления{% if unread_notifications_count %} ({{ unread_notifications_count }}){% endif %}</a>
         <a href="/cabinet">Кабинет</a>
         <span>{{ user.login }} ({{ role_labels.get(user.role, user.role) }})</span>
         <a href="/logout">Выход</a>
@@ -103,3 +111,4 @@
   </script>
 </body>
 </html>
+

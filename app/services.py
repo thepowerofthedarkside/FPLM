@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal, InvalidOperation
@@ -18,6 +18,7 @@ from .models import (
 DATA_TYPES = {"string", "number", "date", "bool", "enum"}
 ROLES = {"admin", "user", "guest"}
 PRODUCT_STATUSES = {"draft", "active", "archived"}
+ATTRIBUTE_GROUPS = {"service", "fashion_spec", "commercial", "production"}
 
 
 def get_category_items(db: Session) -> list[DictionaryItem]:
@@ -99,6 +100,7 @@ def validate_and_set_values(
                 errors.append(f"Атрибут '{attribute.name}': выбран неактивный элемент справочника.")
                 continue
             pav.dictionary_item_id = item.id
+            pav.dictionary_item = item
         else:
             errors.append(f"Атрибут '{attribute.name}': неизвестный тип данных.")
             continue
@@ -153,4 +155,5 @@ def can_change_attribute_type(db: Session, attribute_id: int) -> bool:
         .limit(1)
     )
     return db.execute(stmt).first() is None
+
 

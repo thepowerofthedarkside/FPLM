@@ -8,6 +8,30 @@
       <input name="server_base_url" value="{{ values.server_base_url }}" placeholder="http://127.0.0.1:8000" required>
     </div>
 
+    <div style="grid-column:1/-1;"><h3>Настройка PLM</h3></div>
+    <div><label class="check-label"><input type="checkbox" name="plm_block_enabled" {% if values.plm_block_enabled == '1' %}checked{% endif %}> Включить PLM-блок на карточке изделия</label></div>
+    <div><label class="check-label"><input type="checkbox" name="plm_materials_enabled" {% if values.plm_materials_enabled == '1' %}checked{% endif %}> Материалы</label></div>
+    <div><label class="check-label"><input type="checkbox" name="plm_bom_enabled" {% if values.plm_bom_enabled == '1' %}checked{% endif %}> BOM</label></div>
+    <div><label class="check-label"><input type="checkbox" name="plm_variants_enabled" {% if values.plm_variants_enabled == '1' %}checked{% endif %}> Цвето-размерная матрица</label></div>
+    <div><label class="check-label"><input type="checkbox" name="plm_samples_enabled" {% if values.plm_samples_enabled == '1' %}checked{% endif %}> Sample tracking</label></div>
+    <div><label class="check-label"><input type="checkbox" name="plm_costing_enabled" {% if values.plm_costing_enabled == '1' %}checked{% endif %}> Costing decomposition</label></div>
+
+    <div style="grid-column:1/-1;"><h3>Настройка Fashion</h3></div>
+    <div><label class="check-label"><input type="checkbox" name="fashion_block_enabled" {% if values.fashion_block_enabled == '1' %}checked{% endif %}> Включить блок fashion-спецификации</label></div>
+    <div><label class="check-label"><input type="checkbox" name="fashion_collection_enabled" {% if values.fashion_collection_enabled == '1' %}checked{% endif %}> Коллекция</label></div>
+    <div><label class="check-label"><input type="checkbox" name="fashion_supplier_enabled" {% if values.fashion_supplier_enabled == '1' %}checked{% endif %}> Поставщик</label></div>
+    <div><label class="check-label"><input type="checkbox" name="fashion_style_type_enabled" {% if values.fashion_style_type_enabled == '1' %}checked{% endif %}> Тип изделия</label></div>
+    <div><label class="check-label"><input type="checkbox" name="fashion_capsule_enabled" {% if values.fashion_capsule_enabled == '1' %}checked{% endif %}> Капсула</label></div>
+    <div><label class="check-label"><input type="checkbox" name="fashion_sample_stage_enabled" {% if values.fashion_sample_stage_enabled == '1' %}checked{% endif %}> Этап образца</label></div>
+    <div><label class="check-label"><input type="checkbox" name="fashion_silhouette_enabled" {% if values.fashion_silhouette_enabled == '1' %}checked{% endif %}> Силуэт</label></div>
+    <div><label class="check-label"><input type="checkbox" name="fashion_fit_type_enabled" {% if values.fashion_fit_type_enabled == '1' %}checked{% endif %}> Посадка</label></div>
+    <div><label class="check-label"><input type="checkbox" name="fashion_length_cm_enabled" {% if values.fashion_length_cm_enabled == '1' %}checked{% endif %}> Длина (см)</label></div>
+    <div><label class="check-label"><input type="checkbox" name="fashion_shell_material_enabled" {% if values.fashion_shell_material_enabled == '1' %}checked{% endif %}> Основной материал</label></div>
+    <div><label class="check-label"><input type="checkbox" name="fashion_lining_material_enabled" {% if values.fashion_lining_material_enabled == '1' %}checked{% endif %}> Подкладка</label></div>
+    <div><label class="check-label"><input type="checkbox" name="fashion_insulation_enabled" {% if values.fashion_insulation_enabled == '1' %}checked{% endif %}> Утеплитель</label></div>
+    <div><label class="check-label"><input type="checkbox" name="fashion_planned_cost_enabled" {% if values.fashion_planned_cost_enabled == '1' %}checked{% endif %}> План. себестоимость</label></div>
+    <div><label class="check-label"><input type="checkbox" name="fashion_actual_cost_enabled" {% if values.fashion_actual_cost_enabled == '1' %}checked{% endif %}> Факт. себестоимость</label></div>
+
     <div><button type="submit">Сохранить настройки</button></div>
   </form>
 </div>

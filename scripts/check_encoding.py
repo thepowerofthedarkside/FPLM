@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -22,9 +22,9 @@ for path in ROOT.rglob('*'):
 
     if question_run in text:
         bad.append((path, "contains four consecutive question marks"))
-    if 'Р' in text and any(m in text for m in ('Рџ', 'РЎ', 'СЃ', 'СЂ', 'С‚', 'СЏ')):
+    if '' in text and any(m in text for m in ('', '', '', '', '', '')):
         # heuristic for classic mojibake fragments in Cyrillic UI text
-        if 'Пр' not in text and 'Ст' not in text:
+        if '' not in text and '' not in text:
             bad.append((path, 'possible mojibake fragments'))
 
 if bad:
@@ -34,3 +34,4 @@ if bad:
     sys.exit(1)
 
 print('OK: no obvious encoding issues')
+

@@ -67,6 +67,7 @@ class Attribute(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     code: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
+    group_code: Mapped[str] = mapped_column(String(40), default="fashion_spec", nullable=False)
     data_type: Mapped[str] = mapped_column(String(20), nullable=False)
     is_required: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_multivalue: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -110,6 +111,21 @@ class Product(Base):
     files: Mapped[list["ProductFile"]] = relationship(
         "ProductFile", back_populates="product", cascade="all, delete-orphan"
     )
+    materials: Mapped[list["ProductMaterial"]] = relationship(
+        "ProductMaterial", back_populates="product", cascade="all, delete-orphan"
+    )
+    bom_items: Mapped[list["ProductBOMItem"]] = relationship(
+        "ProductBOMItem", back_populates="product", cascade="all, delete-orphan"
+    )
+    variants: Mapped[list["ProductVariant"]] = relationship(
+        "ProductVariant", back_populates="product", cascade="all, delete-orphan"
+    )
+    samples: Mapped[list["ProductSample"]] = relationship(
+        "ProductSample", back_populates="product", cascade="all, delete-orphan"
+    )
+    costing_items: Mapped[list["ProductCostingItem"]] = relationship(
+        "ProductCostingItem", back_populates="product", cascade="all, delete-orphan"
+    )
 
 
 class Collection(Base):
@@ -133,6 +149,7 @@ class Supplier(Base):
     country: Mapped[str] = mapped_column(String(120), nullable=False)
     contact_email: Mapped[str | None] = mapped_column(String(200), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    materials: Mapped[list["ProductMaterial"]] = relationship("ProductMaterial", back_populates="supplier")
 
 
 class ProductSpec(Base):
@@ -252,6 +269,25 @@ class SystemSetting(Base):
     value: Mapped[str] = mapped_column(Text, nullable=False)
 
 
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    entity_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    entity_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    entity_label: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    scope_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    scope_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    action: Mapped[str] = mapped_column(String(80), nullable=False)
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    details: Mapped[str | None] = mapped_column(Text, nullable=True)
+    actor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    actor_login: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    actor: Mapped[User | None] = relationship("User")
+
+
 class ProductAttributeAssignment(Base):
     __tablename__ = "product_attributes"
     __table_args__ = (UniqueConstraint("product_id", "attribute_id", name="uq_product_attribute"),)
@@ -280,3 +316,147 @@ class ProductAttributeValue(Base):
 
     assignment: Mapped[ProductAttributeAssignment] = relationship("ProductAttributeAssignment", back_populates="values")
     dictionary_item: Mapped[DictionaryItem | None] = relationship("DictionaryItem")
+
+
+class UserNotificationPreference(Base):
+    __tablename__ = "user_notification_preferences"
+    __table_args__ = (UniqueConstraint("user_id", "event_key", name="uq_user_notification_preference"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    event_key: Mapped[str] = mapped_column(String(80), nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    user: Mapped[User] = relationship("User")
+
+
+class UserNotification(Base):
+    __tablename__ = "user_notifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    event_key: Mapped[str] = mapped_column(String(80), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    link_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    entity_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    entity_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    user: Mapped[User] = relationship("User")
+
+
+class EntityComment(Base):
+    __tablename__ = "entity_comments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    entity_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    entity_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    author_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    author: Mapped[User | None] = relationship("User")
+    revisions: Mapped[list["EntityCommentRevision"]] = relationship(
+        "EntityCommentRevision", back_populates="comment", cascade="all, delete-orphan"
+    )
+
+
+class EntityCommentRevision(Base):
+    __tablename__ = "entity_comment_revisions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    comment_id: Mapped[int] = mapped_column(ForeignKey("entity_comments.id"), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    action: Mapped[str] = mapped_column(String(30), nullable=False)
+    actor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    comment: Mapped[EntityComment] = relationship("EntityComment", back_populates="revisions")
+    actor: Mapped[User | None] = relationship("User")
+
+
+class ProductMaterial(Base):
+    __tablename__ = "product_materials"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), nullable=False)
+    supplier_id: Mapped[int | None] = mapped_column(ForeignKey("suppliers.id"), nullable=True)
+    code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    composition: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    unit: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    price_per_unit: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
+    currency: Mapped[str] = mapped_column(String(10), default="RUB", nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    product: Mapped[Product] = relationship("Product", back_populates="materials")
+    supplier: Mapped[Supplier | None] = relationship("Supplier", back_populates="materials")
+
+
+class ProductBOMItem(Base):
+    __tablename__ = "product_bom_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), nullable=False)
+    material_id: Mapped[int | None] = mapped_column(ForeignKey("product_materials.id"), nullable=True)
+    component: Mapped[str] = mapped_column(String(200), nullable=False)
+    quantity: Mapped[float | None] = mapped_column(Numeric(12, 3), nullable=True)
+    unit: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    waste_percent: Mapped[float | None] = mapped_column(Numeric(8, 2), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    product: Mapped[Product] = relationship("Product", back_populates="bom_items")
+    material: Mapped[ProductMaterial | None] = relationship("ProductMaterial")
+
+
+class ProductVariant(Base):
+    __tablename__ = "product_variants"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), nullable=False)
+    color: Mapped[str] = mapped_column(String(100), nullable=False)
+    size: Mapped[str] = mapped_column(String(40), nullable=False)
+    sku_suffix: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    ean: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    planned_qty: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    status: Mapped[str | None] = mapped_column(String(40), nullable=True)
+
+    product: Mapped[Product] = relationship("Product", back_populates="variants")
+
+
+class ProductSample(Base):
+    __tablename__ = "product_samples"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), nullable=False)
+    sample_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    status: Mapped[str] = mapped_column(String(50), nullable=False)
+    owner_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    due_date: Mapped[datetime | None] = mapped_column(Date, nullable=True)
+    received_date: Mapped[datetime | None] = mapped_column(Date, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    product: Mapped[Product] = relationship("Product", back_populates="samples")
+    owner: Mapped[User | None] = relationship("User")
+
+
+class ProductCostingItem(Base):
+    __tablename__ = "product_costing_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), nullable=False)
+    cost_group: Mapped[str] = mapped_column(String(80), nullable=False)
+    label: Mapped[str] = mapped_column(String(200), nullable=False)
+    amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    currency: Mapped[str] = mapped_column(String(10), default="RUB", nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    product: Mapped[Product] = relationship("Product", back_populates="costing_items")

@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block content %}
 <h1>Атрибуты</h1>
 <div class="card">
@@ -9,6 +9,13 @@
       <select name="data_type">
         <option value="">Все</option>
         {% for dt in data_types %}<option value="{{ dt }}" {% if selected_type==dt %}selected{% endif %}>{{ data_type_labels.get(dt, dt) }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Группа</label>
+      <select name="group_code">
+        <option value="">Все</option>
+        {% for code, label in attribute_groups %}<option value="{{ code }}" {% if selected_group==code %}selected{% endif %}>{{ label }}</option>{% endfor %}
       </select>
     </div>
     <div><label>&nbsp;</label><button type="submit" class="secondary">Фильтр</button></div>
@@ -29,6 +36,12 @@
       </select>
     </div>
     <div>
+      <label>Группа</label>
+      <select name="group_code" required>
+        {% for code, label in attribute_groups %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
       <label><span class="label-row">Справочник (для enum) <span class="tooltip" data-tip="Укажите справочник, если тип данных 'Справочник'.">?</span></span></label>
       <select name="dictionary_id_raw">
         <option value="">-</option>
@@ -44,20 +57,69 @@
 
 <div class="card table-wrap">
   <table>
-    <thead><tr><th>Код</th><th>Наименование</th><th>Тип</th><th>Справочник</th><th>Обяз.</th><th>Множ.</th><th>Статус</th></tr></thead>
+    <thead><tr><th>Код</th><th>Наименование</th><th>Группа</th><th>Тип</th><th>Справочник</th><th>Обяз.</th><th>Множ.</th><th>Статус</th><th>Действия</th></tr></thead>
     <tbody>
       {% for a in attributes %}
       <tr>
         <td>{{ a.code }}</td>
         <td><a href="/attributes/{{ a.id }}">{{ a.name }}</a></td>
+        <td>{{ attribute_group_labels.get(a.group_code, a.group_code) }}</td>
         <td>{{ data_type_labels.get(a.data_type, a.data_type) }}</td>
         <td>{% if a.dictionary %}<a href="/dictionaries/{{ a.dictionary.id }}">{{ a.dictionary.name }}</a>{% endif %}</td>
         <td>{{ "Да" if a.is_required else "Нет" }}</td>
         <td>{{ "Да" if a.is_multivalue else "Нет" }}</td>
         <td>{{ "Активен" if a.is_active else "Неактивен" }}</td>
+        <td class="actions">
+          {% if can_manage %}
+          <button type="button" onclick="document.getElementById('editAttributeModal{{ a.id }}').showModal()">Редактировать</button>
+          <form method="post" action="/attributes/{{ a.id }}/deactivate" class="inline" onsubmit="return confirm('Деактивировать атрибут?');">
+            <button type="submit" class="warn">Деактивировать</button>
+          </form>
+          <form method="post" action="/attributes/{{ a.id }}/delete" class="inline" onsubmit="return confirm('Удалить атрибут? Действие необратимо.');">
+            <button type="submit" class="danger">Удалить</button>
+          </form>
+          <dialog id="editAttributeModal{{ a.id }}" class="modal">
+            <div class="modal-body">
+              <div class="modal-header">
+                <h3>Редактировать атрибут</h3>
+                <form method="dialog"><button type="submit" class="secondary">Закрыть</button></form>
+              </div>
+              <form method="post" action="/attributes/{{ a.id }}/update" class="grid">
+                <div><label>Код</label><input name="code" value="{{ a.code }}" required></div>
+                <div><label>Наименование</label><input name="name" value="{{ a.name }}" required></div>
+                <div>
+                  <label>Группа</label>
+                  <select name="group_code" required>
+                    {% for code, label in attribute_groups %}<option value="{{ code }}" {% if code==a.group_code %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                  </select>
+                </div>
+                <div>
+                  <label>Тип данных</label>
+                  <select name="data_type" required>
+                    {% for dt in data_types %}<option value="{{ dt }}" {% if dt==a.data_type %}selected{% endif %}>{{ data_type_labels.get(dt, dt) }}</option>{% endfor %}
+                  </select>
+                </div>
+                <div>
+                  <label>Справочник (для enum)</label>
+                  <select name="dictionary_id_raw">
+                    <option value="">-</option>
+                    {% for d in dictionaries %}<option value="{{ d.id }}" {% if a.dictionary_id==d.id %}selected{% endif %}>{{ d.name }}</option>{% endfor %}
+                  </select>
+                </div>
+                <div><label><input type="checkbox" name="is_required" {% if a.is_required %}checked{% endif %}> Обязательный</label></div>
+                <div><label><input type="checkbox" name="is_multivalue" {% if a.is_multivalue %}checked{% endif %}> Множественный</label></div>
+                <div><button type="submit">Сохранить</button></div>
+              </form>
+            </div>
+          </dialog>
+          {% else %}
+          <a href="/attributes/{{ a.id }}">Открыть</a>
+          {% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
 {% endblock %}
+
